@@ -245,15 +245,15 @@ body.scanlines #fxScanlines { opacity: .55; }
 .portal-btn .portal-name {
   position: relative;
   z-index: 2;
-  max-width: 74%;
-  padding: 5px 10px 4px;
+  max-width: 78%;
+  padding: 5px 14px 4px;
   border: 3px solid #000;
   background: rgba(2, 5, 13, .82);
   color: #fff;
   font-size: clamp(15px, 1.55vw, 20px);
   font-weight: 700;
   line-height: 1.2;
-  letter-spacing: .14em;
+  letter-spacing: .12em;
   text-align: center;
   text-shadow: 2px 2px 0 #000, 0 0 10px currentColor;
   box-shadow: 0 0 0 2px rgba(126, 190, 255, .18);

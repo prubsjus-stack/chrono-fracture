@@ -275,9 +275,10 @@
     var top = hidden ? theme.accent2 : theme.platformTop;
     var edge = hidden ? '#c6ffff' : theme.platformEdge;
 
+    var baseAlpha = hidden ? 0.82 : 1;
     ctx.save();
     if (hidden) {
-      ctx.globalAlpha = 0.82;
+      ctx.globalAlpha = baseAlpha;
       ctx.shadowColor = theme.accent2;
       ctx.shadowBlur = 12;
     }
@@ -380,7 +381,7 @@
           ctx.fillStyle = theme.accent;
           ctx.fillRect(ex, y + 6, 14, 1);
           ctx.fillRect(ex + 5, y + 6, 1, Math.min(6, h - 9));
-          ctx.globalAlpha = 1;
+          ctx.globalAlpha = baseAlpha;
         }
         for (var rr = 0; rr < Math.floor(w / 37); rr++) {
           var rx = x + 9 + rr * 37;
@@ -391,7 +392,7 @@
         ctx.globalAlpha = 0.45 + 0.15 * Math.sin(time * 2 + x * 0.05);
         ctx.fillStyle = edge;
         ctx.fillRect(x + 4, y + h - 3, w - 8, 1);
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = baseAlpha;
       }
 
       if (hidden) {
@@ -417,7 +418,7 @@
       ctx.globalAlpha = 0.5 + 0.2 * Math.sin(time * 3 + x);
       ctx.fillRect(x + 13, y + h + 3, 2, 4);
       ctx.fillRect(x + w - 15, y + h + 3, 2, 4);
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = baseAlpha;
     }
 
     ctx.restore();
