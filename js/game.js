@@ -997,7 +997,7 @@
       var active = this.allShards();
       CF.portal.drawWorld(ctx, level.exit.x, level.exit.y - 42, 104, active ? '#57ffa8' : '#3fa9ff', this.time, active);
       ctx.save();
-      E.txt(ctx, active ? t('msg.portalOpen') : t('hint.exit'), level.exit.x, level.exit.y + 18, 6, active ? '#57ffa8' : '#8ea2c7', 'center');
+      E.txt(ctx, active ? t('msg.portalOpen') : t('hint.exit'), level.exit.x, level.exit.y + 18, 8.5, active ? '#57ffa8' : '#8ea2c7', 'center');
       ctx.restore();
     }
 
@@ -1024,7 +1024,7 @@
       ctx.save();
       var label = ch.remote && this.remoteNames[ch.id] ? this.remoteNames[ch.id] : ch.def.slot;
       var labelColor = ch.id === this.activeChar && this.mode !== 'coop' ? '#ffffff' : ch.def.accent;
-      E.txt(ctx, label, ch.x + ch.w / 2, ch.y - 6, 5.5, labelColor, 'center');
+      E.txt(ctx, label, ch.x + ch.w / 2, ch.y - 6, 7.5, labelColor, 'center');
       if (ch.remote) {
         ctx.fillStyle = ch.def.accent;
         ctx.fillRect(ch.x + ch.w / 2 - 3, ch.y - 3, 6, 1);
@@ -1127,99 +1127,99 @@
     var quality = CF.store.settings.quality;
     var pad = 12;
     var i;
-    E.panel(ctx, pad, pad, 286, 44, 0.62);
-    E.txt(ctx, t('hud.era') + ' · ' + t(level.nameKey), pad + 12, pad + 16, 7, '#8ea2c7');
-    E.txt(ctx, t(level.whenKey), pad + 12, pad + 34, 10, '#e9f2ff');
+    E.panel(ctx, pad, pad, 286, 50, 0.62);
+    E.txt(ctx, t('hud.era') + ' �� ' + t(level.nameKey), pad + 12, pad + 18, 8.5, '#a9bbd8');
+    E.txt(ctx, t(level.whenKey), pad + 12, pad + 39, 11, '#e9f2ff');
 
-    var iconsX = 190;
+    var iconsX = 198;
     if (level.isFinal) {
-      E.txt(ctx, t('hud.seal'), pad + 12, pad + 56, 6, '#8ea2c7');
+      E.txt(ctx, t('hud.seal'), pad + 12, pad + 63, 8, '#8ea2c7');
     } else {
       for (i = 0; i < level.shards.length; i++) {
         var got = !!this.shards[level.shards[i].id];
-        this.drawHudGem(ctx, iconsX + i * 25, pad + 23, got);
+        this.drawHudGem(ctx, iconsX + i * 25, pad + 27, got);
       }
     }
 
-    E.panel(ctx, E.W - 224 - pad, pad, 224, 44, 0.62);
-    E.txt(ctx, t('hud.fracture'), E.W - 224 - pad + 12, pad + 16, 7, '#8ea2c7');
+    E.panel(ctx, E.W - 224 - pad, pad, 224, 50, 0.62);
+    E.txt(ctx, t('hud.fracture'), E.W - 224 - pad + 12, pad + 18, 8.5, '#a9bbd8');
     var frac = Math.round(this.fracture);
-    E.txt(ctx, frac + '%', E.W - pad - 12, pad + 16, 8, this.fracture > 75 ? '#ff5b6e' : this.fracture > 45 ? '#ffbf5e' : '#52f0e6', 'right');
+    E.txt(ctx, frac + '%', E.W - pad - 12, pad + 18, 9.5, this.fracture > 75 ? '#ff5b6e' : this.fracture > 45 ? '#ffbf5e' : '#52f0e6', 'right');
     var bw = 200;
     ctx.save();
     ctx.fillStyle = 'rgba(255,255,255,.08)';
-    ctx.fillRect(E.W - 224 - pad + 12, pad + 25, bw, 5);
+    ctx.fillRect(E.W - 224 - pad + 12, pad + 30, bw, 6);
     var fg = ctx.createLinearGradient(E.W - 224 - pad + 12, 0, E.W - 224 - pad + 12 + bw, 0);
     fg.addColorStop(0, '#52f0e6');
     fg.addColorStop(0.55, '#ffbf5e');
     fg.addColorStop(1, '#ff5b6e');
     ctx.fillStyle = fg;
-    ctx.fillRect(E.W - 224 - pad + 12, pad + 25, bw * this.fracture / 100, 5);
+    ctx.fillRect(E.W - 224 - pad + 12, pad + 30, bw * this.fracture / 100, 6);
     ctx.fillStyle = 'rgba(255,255,255,.5)';
-    for (var x = 0; x < 10; x++) ctx.fillRect(E.W - 224 - pad + 12 + x * 20, pad + 25, 1, 5);
+    for (var x = 0; x < 10; x++) ctx.fillRect(E.W - 224 - pad + 12 + x * 20, pad + 30, 1, 6);
     ctx.restore();
 
     if (this.mode !== 'coop') {
       var active = this.chars[this.activeChar];
       if (active) {
-        E.panel(ctx, pad, E.H - 78, 300, 66, 0.66);
+        E.panel(ctx, pad, E.H - 84, 300, 72, 0.66);
         E.drawCharacter(ctx, active.def, pad + 28, E.H - 20, 1, 0, { height: 42, time: this.time });
-        E.txt(ctx, t(active.def.nameKey), pad + 54, E.H - 52, 7.5, active.def.accent);
-        E.txt(ctx, t(active.def.abilityKey), pad + 54, E.H - 37, 6, '#e9f2ff');
+        E.txt(ctx, t(active.def.nameKey), pad + 54, E.H - 56, 9.5, active.def.accent);
+        E.txt(ctx, t(active.def.abilityKey), pad + 54, E.H - 40, 8.5, '#e9f2ff');
         var cd = this.abilityCooldown(active);
         var txt = cd > 0 ? t('hud.cooldown') + ' ' + cd.toFixed(1) + 's' : t('hud.ready');
-        E.txt(ctx, txt, pad + 54, E.H - 23, 5.5, cd > 0 ? '#ffbf5e' : '#57ffa8');
+        E.txt(ctx, txt, pad + 54, E.H - 25, 8, cd > 0 ? '#ffbf5e' : '#57ffa8');
         if (this.time < this.echoUntil) {
-          E.txt(ctx, 'ECO ' + Math.ceil(this.echoUntil - this.time) + 's', pad + 200, E.H - 52, 6, '#52f0e6');
+          E.txt(ctx, 'ECO ' + Math.ceil(this.echoUntil - this.time) + 's', pad + 200, E.H - 56, 7.5, '#52f0e6');
         }
       }
       if (this.mode === 'solo' || (this.mode === 'online' && this.localChars.length > 1)) {
-        E.txt(ctx, t('hud.switch'), E.W - pad - 12, E.H - 18, 5.5, '#8ea2c7', 'right');
+        E.txt(ctx, t('hud.switch'), E.W - pad - 12, E.H - 20, 7.5, '#8ea2c7', 'right');
       }
     } else {
-      E.panel(ctx, pad, E.H - 84, 420, 72, 0.62);
+      E.panel(ctx, pad, E.H - 88, 420, 76, 0.62);
       for (i = 0; i < 3; i++) {
         var cc = this.chars['p' + (i + 1)];
         var ox = pad + 30 + i * 132;
         E.drawCharacter(ctx, cc.def, ox, E.H - 22, 1, 0, { height: 40, time: this.time });
-        E.txt(ctx, cc.def.slot, ox + 18, E.H - 52, 6, cc.def.accent);
-        E.txt(ctx, t(cc.def.abilityKey), ox + 18, E.H - 38, 5.5, '#8ea2c7');
-        E.txt(ctx, COOP_CONTROLS[cc.id].ability.replace('Key', ''), ox + 18, E.H - 24, 5.5, '#e9f2ff');
+        E.txt(ctx, cc.def.slot, ox + 18, E.H - 57, 8, cc.def.accent);
+        E.txt(ctx, t(cc.def.abilityKey), ox + 18, E.H - 42, 7.5, '#8ea2c7');
+        E.txt(ctx, COOP_CONTROLS[cc.id].ability.replace('Key', ''), ox + 18, E.H - 27, 7.5, '#e9f2ff');
       }
     }
 
     var hint = this.contextHint();
     if (hint) {
-      var hw = 520;
+      var hw = 640;
       var hx = (E.W - hw) / 2;
-      E.panel(ctx, hx, E.H - 54, hw, 40, 0.66);
-      E.txt(ctx, hint, E.W / 2, E.H - 30, 6.5, '#c6d5ec', 'center');
+      E.panel(ctx, hx, E.H - 132, hw, 42, 0.7);
+      E.txt(ctx, hint, E.W / 2, E.H - 107, 8.5, '#d6e2f5', 'center');
       var ctrl = this.mode === 'coop' ? t('hint.coop') : this.mode === 'online' ? t('hint.online') : t('hint.move');
-      E.txt(ctx, ctrl, E.W / 2, E.H - 16, 5, '#5a6b8d', 'center');
+      E.txt(ctx, ctrl, E.W / 2, E.H - 92, 7, '#7183a6', 'center');
     }
 
     if (this.mode === 'online') {
       var st = this.online && this.online.players ? this.online.players.length : this.localChars.length;
       var ping = this.online && this.online.ping != null ? this.online.ping + 'ms' : '—';
       var label = 'ONLINE · ' + st + '/3 · ' + ping;
-      E.txt(ctx, label, E.W / 2, 20, 6, '#57ffa8', 'center');
+      E.txt(ctx, label, E.W / 2, 20, 8, '#57ffa8', 'center');
       if (this.online && this.online.players) {
         var names = [];
         for (var pi = 0; pi < this.online.players.length; pi++) {
           var pl = this.online.players[pi];
           names.push(pl.name + ' [' + (pl.char || '').toUpperCase() + ']');
         }
-        E.txt(ctx, names.join('   ·   '), E.W / 2, 34, 5.5, '#8ea2c7', 'center');
+        E.txt(ctx, names.join('   ·   '), E.W / 2, 34, 7.5, '#a9bbd8', 'center');
       }
     } else {
       var modeKey = this.mode === 'coop' ? 'hud.coop' : 'hud.solo';
-      E.txt(ctx, t(modeKey) + ' · ' + t(this.difficulty.key), E.W / 2, 20, 5.5, '#5a6b8d', 'center');
+      E.txt(ctx, t(modeKey) + ' · ' + t(this.difficulty.key), E.W / 2, 20, 7.5, '#7183a6', 'center');
     }
 
     if (this.level.sealWindow && this.sealDeadline) {
       var remain = Math.max(0, this.sealDeadline - this.time);
-      E.panel(ctx, E.W / 2 - 120, 44, 240, 28, 0.7);
-      E.txt(ctx, t('hud.sealWindow') + ' · ' + remain.toFixed(1) + 's', E.W / 2, 62, 6.5, '#b98bff', 'center');
+      E.panel(ctx, E.W / 2 - 130, 48, 260, 32, 0.7);
+      E.txt(ctx, t('hud.sealWindow') + ' · ' + remain.toFixed(1) + 's', E.W / 2, 68, 8, '#b98bff', 'center');
     }
 
     if (this.echoCooldownUntil > this.time) {
@@ -1307,7 +1307,7 @@
       ctx.stroke();
     }
     E.txt(ctx, t('msg.collapse'), E.W / 2, E.H / 2 - 14, 20, '#ff8a99', 'center', '700');
-    E.txt(ctx, t('msg.collapseDesc'), E.W / 2, E.H / 2 + 22, 6.5, '#c6d5ec', 'center');
+    E.txt(ctx, t('msg.collapseDesc'), E.W / 2, E.H / 2 + 24, 8.5, '#c6d5ec', 'center');
     ctx.restore();
   };
 

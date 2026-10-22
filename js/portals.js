@@ -16,6 +16,158 @@
     return 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + a + ')';
   }
 
+  function tone(rgb, amount) {
+    var r = Math.round(rgb.r + (255 - rgb.r) * amount);
+    var g = Math.round(rgb.g + (255 - rgb.g) * amount);
+    var b = Math.round(rgb.b + (255 - rgb.b) * amount);
+    if (amount < 0) {
+      r = Math.round(rgb.r * (1 + amount));
+      g = Math.round(rgb.g * (1 + amount));
+      b = Math.round(rgb.b * (1 + amount));
+    }
+    return 'rgb(' + Math.max(0, Math.min(255, r)) + ',' + Math.max(0, Math.min(255, g)) + ',' + Math.max(0, Math.min(255, b)) + ')';
+  }
+
+  function pixelHash(x, y, seed) {
+    var n = Math.sin(x * 127.1 + y * 311.7 + (seed || 0) * 74.7) * 43758.5453;
+    return n - Math.floor(n);
+  }
+
+  function steppedRect(ctx, x, y, w, h, step, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x + step * 4, y, w - step * 8, h);
+    ctx.fillRect(x + step * 2, y + step, w - step * 4, h - step * 2);
+    ctx.fillRect(x + step, y + step * 2, w - step * 2, h - step * 4);
+    ctx.fillRect(x, y + step * 4, w, h - step * 8);
+  }
+
+  function drawButton(ctx, w, h, o) {
+    o = o || {};
+    var rgb = o.rgb || hexToRgb(o.color);
+    var t = o.t || 0;
+    var hover = !!o.hover;
+    var press = o.press || 0;
+    var opening = o.opening == null ? 1 : o.opening;
+    var intensity = o.intensity == null ? 1 : o.intensity;
+    if (hover) intensity *= 1.14;
+    var speed = hover ? 1.7 : 1;
+    var step = 4;
+    var edge = tone(rgb, -0.62);
+    var edgeDark = tone(rgb, -0.82);
+    var hot = tone(rgb, 0.72);
+    var pale = tone(rgb, 0.9);
+    var cx = w / 2;
+    var cy = h / 2;
+    var ix = 24;
+    var iy = 20;
+    var iw = w - 48;
+    var ih = h - 40;
+    var rx = iw / 2;
+    var ry = ih / 2;
+
+    ctx.save();
+    ctx.clearRect(0, 0, w, h);
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = 0.35 + Math.min(1, opening) * 0.65;
+
+    steppedRect(ctx, 0, 0, w, h, step, '#000000');
+    steppedRect(ctx, step * 2, step * 2, w - step * 4, h - step * 4, step, '#03050c');
+    steppedRect(ctx, step * 3, step * 3, w - step * 6, h - step * 6, step, edgeDark);
+    steppedRect(ctx, step * 4, step * 4, w - step * 8, h - step * 8, step, edge);
+    steppedRect(ctx, step * 5, step * 5, w - step * 10, h - step * 10, step, '#000000');
+    steppedRect(ctx, step * 6, step * 6, w - step * 12, h - step * 12, step, '#03050d');
+
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(ix - 2, iy - 2, iw + 4, ih + 4);
+    ctx.fillStyle = tone(rgb, -0.88);
+    ctx.fillRect(ix, iy, iw, ih);
+
+    var B = 4;
+    var bands = [
+      { r: 0.24, w: 0.045, tone: 0.92 },
+      { r: 0.42, w: 0.05, tone: 0.74 },
+      { r: 0.62, w: 0.055, tone: 0.48 },
+      { r: 0.82, w: 0.06, tone: 0.24 },
+      { r: 0.97, w: 0.035, tone: 0.05 }
+    ];
+
+    for (var gy = 0; gy < Math.ceil(ih / B); gy++) {
+      for (var gx = 0; gx < Math.ceil(iw / B); gx++) {
+        var px = ix + gx * B;
+        var py = iy + gy * B;
+        var nx = (px + B / 2 - cx) / rx;
+        var ny = (py + B / 2 - cy) / ry;
+        var r = Math.sqrt(nx * nx + ny * ny);
+        if (r > 1.035) continue;
+        var a = Math.atan2(ny, nx);
+        var wobble = 0.034 * Math.sin(a * 5 + t * 1.8 * speed) +
+          0.021 * Math.sin(a * 9 - t * 1.15 * speed) +
+          0.011 * Math.sin((gx * 0.8 + gy * 1.1) + t * 0.9 * speed);
+        var rr = r + wobble;
+        var shade = 0;
+        var found = false;
+        for (var bi = 0; bi < bands.length; bi++) {
+          var bd = bands[bi];
+          var width = bd.w * (1 + 0.24 * Math.sin(a * 4 - t * 0.8 + bi));
+          if (Math.abs(rr - bd.r) < width) {
+            shade = bd.tone + (pixelHash(gx, gy, bi) - 0.5) * 0.2;
+            found = true;
+            break;
+          }
+        }
+        var angleGlint = Math.abs(Math.atan2(Math.sin(a + 0.85 + 0.14 * Math.sin(t * 0.7)), Math.cos(a + 0.85 + 0.14 * Math.sin(t * 0.7))));
+        if (angleGlint < 0.18 && rr > 0.18 && rr < 0.93) shade = Math.max(shade, 0.8);
+        if (!found && r < 0.14) shade = 0.95;
+        if (!found && pixelHash(gx, gy, Math.floor(t * 4 * speed)) > 0.972 && r < 0.96) {
+          shade = 0.35 + pixelHash(gx + 3, gy + 7, 4) * 0.55;
+          found = true;
+        }
+        if (!found) {
+          var base = 0.055 + (1 - Math.min(1, r)) * 0.045;
+          ctx.fillStyle = 'rgba(' + Math.round(rgb.r * base) + ',' + Math.round(rgb.g * base) + ',' + Math.round(rgb.b * base) + ',1)';
+          ctx.fillRect(px, py, B, B);
+          continue;
+        }
+        ctx.fillStyle = shade > 0.8 ? pale : shade > 0.5 ? hot : tone(rgb, shade);
+        ctx.fillRect(px, py, B, B);
+        if (shade > 0.86) {
+          ctx.fillStyle = '#f2ffff';
+          ctx.fillRect(px + 1, py + 1, 2, 2);
+        }
+      }
+    }
+
+    for (var f = 0; f < 14; f++) {
+      var fa = pixelHash(f, 9, 2) * Math.PI * 2 + t * (0.18 + pixelHash(f, 3, 1) * 0.2) * speed;
+      var fr = 0.68 + pixelHash(f, 6, 5) * 0.42;
+      var fx = Math.round(cx + Math.cos(fa) * rx * fr);
+      var fy = Math.round(cy + Math.sin(fa) * ry * fr);
+      if (fx < ix || fx > ix + iw - B || fy < iy || fy > iy + ih - B) continue;
+      var fs = pixelHash(f, 11, Math.floor(t * 3)) > 0.55 ? 4 : 2;
+      ctx.fillStyle = f % 3 === 0 ? pale : tone(rgb, 0.5);
+      ctx.fillRect(fx, fy, fs, fs);
+    }
+
+    var marker = Math.floor(t * 3.2) % 6;
+    for (var k = 0; k < 6; k++) {
+      var mx = 28 + k * Math.floor((w - 56) / 6);
+      ctx.fillStyle = k === marker ? pale : tone(rgb, -0.25);
+      ctx.fillRect(mx, h - 15, 10, 3);
+    }
+    ctx.fillStyle = tone(rgb, 0.3);
+    ctx.fillRect(20, 14, 10, 3);
+    ctx.fillRect(w - 30, 14, 10, 3);
+    ctx.fillRect(20, h - 17, 10, 3);
+    ctx.fillRect(w - 30, h - 17, 10, 3);
+
+    if (press > 0.05) {
+      ctx.fillStyle = rgba(rgb, 0.45 * press);
+      ctx.fillRect(ix, iy, iw, 3);
+      ctx.fillRect(ix, iy + ih - 3, iw, 3);
+    }
+    ctx.restore();
+  }
+
   function draw(ctx, size, o) {
     o = o || {};
     var rgb = o.rgb || hexToRgb(o.color);
@@ -206,8 +358,7 @@
       }
       s.opening = Math.min(1, s.opening + dt * 2.4);
       s.press = Math.max(0, s.press - dt * 3.4);
-      var size = s.canvas.width;
-      draw(s.ctx, size, {
+      drawButton(s.ctx, s.canvas.width, s.canvas.height, {
         color: s.color,
         rgb: s.rgb,
         t: clock,

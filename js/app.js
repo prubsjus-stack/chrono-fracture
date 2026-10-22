@@ -74,7 +74,7 @@
 
   function portal(action, color, label, sub, cls) {
     return '<button class="portal-btn ' + (cls || '') + '" data-action="' + action + '" data-portal="' + color + '">' +
-      '<canvas width="160" height="160"></canvas>' +
+      '<canvas width="320" height="160"></canvas>' +
       '<span class="portal-name">' + esc(label) + '</span>' +
       (sub ? '<span class="portal-sub">' + esc(sub) + '</span>' : '') +
       '</button>';
