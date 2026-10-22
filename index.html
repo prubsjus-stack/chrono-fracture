@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05060f">
+<meta name="description" content="CHRONO FRACTURE — juego cooperativo de plataformas y puzles sobre tres científicos atrapados en la prehistoria.">
+<title>CHRONO FRACTURE</title>
+<link rel="icon" href="assets/img/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="is-cover">
+<div id="stage">
+  <canvas id="coverCanvas" aria-hidden="true"></canvas>
+  <canvas id="gameCanvas" width="960" height="540" aria-label="CHRONO FRACTURE"></canvas>
+  <div id="fxScanlines" aria-hidden="true"></div>
+  <div id="fxVignette" aria-hidden="true"></div>
+  <div id="overlay" role="main"></div>
+</div>
+<div id="toastLayer" aria-live="polite" aria-atomic="false"></div>
+<div id="boot" class="boot">
+  <div class="boot-inner">
+    <div class="boot-rift" aria-hidden="true"></div>
+    <h1 class="boot-title">CHRONO<br>FRACTURE</h1>
+    <p class="boot-sub" data-i18n="boot.loading">SINCRONIZANDO LÍNEA TEMPORAL…</p>
+    <div class="boot-bar"><i></i></div>
+  </div>
+</div>
+<script src="vendor/mqtt.min.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/config.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/store.js"></script>
+<script src="js/portals.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/credits.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/game.js"></script>
+<script src="js/online.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
