@@ -41,6 +41,91 @@
     ctx.fillRect(x, y + step * 4, w, h - step * 8);
   }
 
+  function wrapText(ctx, text, maxWidth, maxLines) {
+    var words = String(text || '').split(/\s+/);
+    var lines = [];
+    var line = '';
+    var i = 0;
+    while (i < words.length) {
+      var test = line ? line + ' ' + words[i] : words[i];
+      if (line && ctx.measureText(test).width > maxWidth) {
+        lines.push(line);
+        line = words[i];
+        i++;
+        if (lines.length === maxLines) break;
+      } else {
+        line = test;
+        i++;
+      }
+    }
+    if (lines.length < maxLines && line) {
+      lines.push(line);
+      line = '';
+    }
+    if (i < words.length || line) {
+      var last = lines.length ? lines[lines.length - 1] : '';
+      while (last.length > 1 && ctx.measureText(last + '...').width > maxWidth) {
+        last = last.slice(0, -1);
+      }
+      if (lines.length) lines[lines.length - 1] = last + '...';
+    }
+    return lines;
+  }
+
+  function drawLabel(ctx, w, h, o) {
+    if (!o.label) return;
+    var maxW = w - 108;
+    var labelSize = 22;
+    var labelFont = '700 ' + labelSize + 'px Silkscreen, monospace';
+    ctx.font = labelFont;
+    var labelW = ctx.measureText(o.label).width;
+    if (labelW > maxW) {
+      labelSize = Math.max(12, Math.floor(labelSize * maxW / labelW));
+      labelFont = '700 ' + labelSize + 'px Silkscreen, monospace';
+      ctx.font = labelFont;
+    }
+    var subSize = 12;
+    var subFont = '400 ' + subSize + 'px Silkscreen, monospace';
+    ctx.font = subFont;
+    var subLines = o.sub ? wrapText(ctx, o.sub, maxW - 8, 3) : [];
+    var plateW = Math.min(maxW + 26, w - 56);
+    var plateH = 32 + (subLines.length ? 8 + subLines.length * 14 : 0);
+    var px = Math.round((w - plateW) / 2);
+    var py = Math.round((h - plateH) / 2);
+    var edge = tone(o.rgb, -0.45);
+
+    steppedRect(ctx, px - 4, py - 4, plateW + 8, plateH + 8, 2, '#000000');
+    steppedRect(ctx, px - 2, py - 2, plateW + 4, plateH + 4, 2, edge);
+    steppedRect(ctx, px, py, plateW, plateH, 2, '#03050d');
+    ctx.fillStyle = 'rgba(255,255,255,.07)';
+    ctx.fillRect(px + 6, py + 3, plateW - 12, 1);
+    ctx.fillStyle = tone(o.rgb, -0.2);
+    ctx.fillRect(px + 8, py + plateH - 3, plateW - 16, 1);
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = labelFont;
+    ctx.fillStyle = '#000000';
+    ctx.fillText(o.label, w / 2 + 1, py + 16 + 1);
+    ctx.fillStyle = '#f4f9ff';
+    ctx.fillText(o.label, w / 2, py + 16);
+
+    if (subLines.length) {
+      ctx.font = subFont;
+      ctx.fillStyle = '#a9c3e6';
+      for (var i = 0; i < subLines.length; i++) {
+        ctx.fillStyle = '#000000';
+        ctx.fillText(subLines[i], w / 2 + 1, py + 35 + i * 14 + 1);
+        ctx.fillStyle = '#a9c3e6';
+        ctx.fillText(subLines[i], w / 2, py + 35 + i * 14);
+      }
+    }
+
+    ctx.fillStyle = tone(o.rgb, 0.25);
+    ctx.fillRect(px + 5, py + 6, 3, 3);
+    ctx.fillRect(px + plateW - 8, py + 6, 3, 3);
+  }
+
   function drawButton(ctx, w, h, o) {
     o = o || {};
     var rgb = o.rgb || hexToRgb(o.color);
@@ -159,6 +244,7 @@
     ctx.fillRect(w - 30, 14, 10, 3);
     ctx.fillRect(20, h - 17, 10, 3);
     ctx.fillRect(w - 30, h - 17, 10, 3);
+    drawLabel(ctx, w, h, { label: o.label, sub: o.sub, rgb: rgb });
 
     if (press > 0.05) {
       ctx.fillStyle = rgba(rgb, 0.45 * press);
@@ -314,17 +400,19 @@
   }
 
   function bind(canvas, color) {
+    var btn = canvas.closest('button') || canvas;
     var state = {
       canvas: canvas,
       ctx: canvas.getContext('2d'),
       color: color || '#52f0e6',
       rgb: hexToRgb(color || '#52f0e6'),
+      label: btn.getAttribute('data-label') || '',
+      sub: btn.getAttribute('data-sub') || '',
       hover: false,
       press: 0,
       opening: 0,
       born: clock
     };
-    var btn = canvas.closest('button') || canvas;
     function over() {
       if (!state.hover) {
         state.hover = true;
@@ -361,6 +449,8 @@
       drawButton(s.ctx, s.canvas.width, s.canvas.height, {
         color: s.color,
         rgb: s.rgb,
+        label: s.label,
+        sub: s.sub,
         t: clock,
         hover: s.hover,
         press: s.press,

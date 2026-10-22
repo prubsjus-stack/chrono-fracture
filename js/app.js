@@ -73,10 +73,10 @@
   }
 
   function portal(action, color, label, sub, cls) {
-    return '<button class="portal-btn ' + (cls || '') + '" data-action="' + action + '" data-portal="' + color + '">' +
-      '<canvas width="320" height="160"></canvas>' +
-      '<span class="portal-name">' + esc(label) + '</span>' +
-      (sub ? '<span class="portal-sub">' + esc(sub) + '</span>' : '') +
+    var aria = label + (sub ? ' - ' + sub : '');
+    return '<button class="portal-btn ' + (cls || '') + '" data-action="' + action + '" data-portal="' + color + '" data-label="' + esc(label) + '"' +
+      (sub ? ' data-sub="' + esc(sub) + '"' : '') + ' aria-label="' + esc(aria) + '">' +
+      '<canvas width="320" height="160" aria-hidden="true"></canvas>' +
       '</button>';
   }
 

@@ -11,9 +11,8 @@
   }
 
   function portal(action, color, label, extraClass) {
-    return '<button class="portal-btn ' + (extraClass || '') + '" data-action="' + action + '" data-portal="' + color + '">' +
-      '<canvas width="320" height="160"></canvas>' +
-      '<span class="portal-name">' + esc(label) + '</span>' +
+    return '<button class="portal-btn ' + (extraClass || '') + '" data-action="' + action + '" data-portal="' + color + '" data-label="' + esc(label) + '" aria-label="' + esc(label) + '">' +
+      '<canvas width="320" height="160" aria-hidden="true"></canvas>' +
       '</button>';
   }
 
