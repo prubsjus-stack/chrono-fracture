@@ -4,7 +4,7 @@
   var CF = window.CF = window.CF || {};
 
   CF.VERSION = '1.0.0';
-  CF.TITLE = 'CHRONO FRACTURE';
+  CF.TITLE = 'BROKEN FREQUENCY';
 
   CF.characters = [
     {

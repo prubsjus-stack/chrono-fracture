@@ -136,7 +136,7 @@
     return '<div class="screen"><div class="cover">' +
       '<div class="cover-head">' +
         '<div class="kicker cover-kicker">' + esc(t('cover.kicker')) + '</div>' +
-        '<h1 class="game-title"><span>CHRONO</span><span>FRACTURE</span></h1>' +
+        '<h1 class="game-title"><span>BROKEN</span><span>FREQUENCY</span></h1>' +
         '<p class="cover-tagline">' + esc(t('cover.tagline')) + '</p>' +
       '</div>' +
       '<div class="cover-portals">' +
@@ -328,22 +328,13 @@
     return CF.online.players || [];
   }
 
-  function charsFor(players, myId, isHost) {
-    var owned = {};
+  function charsFor(players, myId) {
     var mine = null;
     players.forEach(function (p) {
-      var cs = (p.chars && p.chars.length ? p.chars : [p.char]).filter(Boolean);
-      cs.forEach(function (c) { owned[c] = true; });
       if (p.id === myId) mine = p;
     });
     var list = mine ? ((mine.chars && mine.chars.length ? mine.chars : [mine.char]).filter(Boolean)) : ['p1'];
-    if (!list.length) list = ['p1'];
-    if (isHost) {
-      CF.characters.forEach(function (ch) {
-        if (list.indexOf(ch.id) < 0 && !owned[ch.id]) list.push(ch.id);
-      });
-    }
-    return list;
+    return list.length ? [list[0]] : ['p1'];
   }
 
   function playerNamesMap(players) {
@@ -358,7 +349,7 @@
     var players = playersFromContext(state.onlineCtx);
     var isHost = CF.online.isHost;
     var myId = CF.online.myId;
-    var locals = charsFor(players, myId, isHost);
+    var locals = charsFor(players, myId);
     var me = players.filter(function (p) { return p.id === myId; })[0];
     return {
       mode: 'online',
@@ -451,7 +442,7 @@
     if (game) game.pause(true);
     var controls = state.lastMode === 'coop'
       ? 'P1 A/D · W · Q    P2 F/H · T · R    P3 J/L · I · U'
-      : 'A/D o ←/→ · W/↑/ESPACIO · E · 1/2/3';
+      : 'A/D o ←/→ · W/↑/ESPACIO · E interactuar/escanear';
     var online = state.onlineMode;
     var host = CF.online.isHost;
     var html = '<div class="screen"><div class="cinematic pause-screen">' +
@@ -886,11 +877,13 @@
       renderLobbyStatic();
     }
     var isHost = CF.online.isHost;
+    var count = (room.players || []).length;
+    var ready = count >= 1;
     var codeEl = $('[data-lobby-code]', overlay);
     if (codeEl) codeEl.textContent = room.code;
     var statusEl = $('[data-lobby-status]', overlay);
     if (statusEl) {
-      statusEl.innerHTML = connectionDot() + ' · ' + esc(isHost ? t('online.lobby.youAreHost') : t('online.lobby.youAreGuest')) + ' · ' + esc(t('common.players')) + ' ' + ((room.players || []).length) + '/3';
+      statusEl.innerHTML = connectionDot() + ' · ' + esc(isHost ? t('online.lobby.youAreHost') : t('online.lobby.youAreGuest')) + ' · ' + esc(t('common.players')) + ' ' + count + '/3' + (ready ? ' · ' + esc(t('online.lobby.soloLink')) : ' · ' + esc(t('online.lobby.waiting')));
     }
     var box = $('[data-lobby-players]', overlay);
     if (box) {
@@ -917,7 +910,10 @@
     var copy = $('[data-action="copy-code"]', overlay);
     if (copy) copy.disabled = false;
     var start = $('[data-action="start-online"]', overlay);
-    if (start) start.disabled = state.startBusy;
+    if (start) {
+      start.disabled = state.startBusy || !ready;
+      start.title = ready ? '' : t('online.lobby.waiting');
+    }
   }
 
   function copyCode() {
@@ -944,6 +940,10 @@
 
   function startOnline() {
     if (!CF.online.isHost || state.startBusy) return;
+    if (!CF.online.room || !(CF.online.room.players || []).length) {
+      toast(t('online.lobby.needPlayer'), 'err');
+      return;
+    }
     state.startBusy = true;
     updateLobbyDom();
     CF.online.startGameHost().then(function (payload) {
@@ -966,6 +966,8 @@
     if (m === 'full') return t('online.err.full');
     if (m === 'char') return t('online.err.char');
     if (m === 'started') return t('online.err.started');
+    if (m === 'needThree') return t('online.lobby.needThree');
+    if (m === 'needPlayer') return t('online.lobby.soloLink');
     if (m === 'timeout') return t('online.err.timeout');
     if (m === 'host') return t('online.err.host');
     if (m === 'closed') return t('online.lobby.closed');
@@ -1437,12 +1439,8 @@
     CF.online.onError = function (kind) {
       toast(onlineError(kind), 'err');
     };
-    CF.online.onPlayerLeft = function (pid, char) {
+    CF.online.onPlayerLeft = function () {
       toast(t('msg.remoteLeft'), 'info');
-      if (game && game.running && CF.online.isHost && char) {
-        game.addLocalChar(char);
-        CF.online.addLocalChar(char);
-      }
     };
     CF.online.onPlayerJoined = function () {
       toast(t('msg.remoteJoined'), 'ok');

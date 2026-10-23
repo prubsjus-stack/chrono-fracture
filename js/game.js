@@ -80,6 +80,7 @@
     this.shake = 0;
     this.ambient = [];
     this.accumulator = 0;
+    this.taskOpen = false;
   }
 
   Game.prototype.start = function (cfg) {
@@ -90,10 +91,17 @@
     this.levelIndex = this.cfg.levelIndex || 0;
     this.level = CF.levels[this.levelIndex];
     this.localChars = (this.cfg.localChars && this.cfg.localChars.length ? this.cfg.localChars : ['p1']).slice();
-    if (this.mode === 'solo') this.localChars = ['p1', 'p2', 'p3'];
+    var soloChar = 'p1';
+    for (var si = 0; si < CF.characters.length; si++) {
+      if (CF.characters[si].id === this.cfg.startChar) soloChar = this.cfg.startChar;
+    }
+    if (this.mode === 'solo') {
+      this.localChars = [soloChar];
+    }
     if (this.mode === 'coop') this.localChars = ['p1', 'p2', 'p3'];
     this.startChar = this.cfg.startChar && this.localChars.indexOf(this.cfg.startChar) >= 0 ? this.cfg.startChar : this.localChars[0];
     this.activeChar = this.startChar;
+    if (this.mode === 'online') this.localChars = [this.startChar];
     this.online = this.cfg.online || null;
     this.isHost = !!(this.online && this.online.isHost);
     this.playerName = this.cfg.name || '';
@@ -105,7 +113,9 @@
     this.altars = {};
     this.doors = {};
     this.bridges = {};
+    this.soloPlates = {};
     this.echoUntil = 0;
+    this.echoCooldownUntil = 0;
     this.sealDeadline = 0;
     this.victoryAt = 0;
     this.victoryFired = false;
@@ -120,6 +130,7 @@
     this.shake = 0;
     this.paused = false;
     this.running = true;
+    this.taskOpen = false;
     this.lastT = performance.now();
     this.ambient = [];
     this.fx.clear();
@@ -177,6 +188,7 @@
   };
 
   Game.prototype.addLocalChar = function (id) {
+    if (this.mode === 'online') return false;
     if (!this.chars[id] || this.localChars.indexOf(id) >= 0) return false;
     this.localChars.push(id);
     this.owner[id] = true;
@@ -187,7 +199,7 @@
 
   Game.prototype.initAmbient = function () {
     var q = CF.store.settings.quality;
-    var count = q === 'low' ? 18 : q === 'medium' ? 32 : 52;
+    var count = q === 'low' ? 30 : q === 'medium' ? 62 : 94;
     this.ambient = [];
     for (var i = 0; i < count; i++) {
       this.ambient.push({
@@ -201,6 +213,8 @@
   };
 
   Game.prototype.destroy = function () {
+    if (CF.tasks) CF.tasks.close();
+    this.taskOpen = false;
     if (this.input) {
       this.input.destroy();
       this.input = null;
@@ -304,6 +318,10 @@
       return;
     }
     if (this.paused) return;
+    if (this.taskOpen) {
+      if (this.input) this.input.endFrame();
+      return;
+    }
     dt = Math.min(dt, 0.05);
     this.time += dt;
     var input = this.input;
@@ -329,9 +347,6 @@
         this.controlChar(this.chars.p2, COOP_CONTROLS.p2, dt, solids);
         this.controlChar(this.chars.p3, COOP_CONTROLS.p3, dt, solids);
       } else {
-        if (input.wasPressed(['Digit1'])) this.switchChar('p1');
-        if (input.wasPressed(['Digit2'])) this.switchChar('p2');
-        if (input.wasPressed(['Digit3'])) this.switchChar('p3');
         var active = this.chars[this.activeChar];
         if (active) this.controlChar(active, SOLO_CONTROLS, dt, solids);
         for (var li = 0; li < this.localChars.length; li++) {
@@ -382,20 +397,6 @@
     this.shake = Math.max(0, this.shake - dt * 26);
     this.updateAmbient(dt);
     input.endFrame();
-  };
-
-  Game.prototype.switchChar = function (id) {
-    if (this.localChars.indexOf(id) < 0) {
-      if (this.mode === 'solo' || (this.mode === 'online' && this.localChars.length > 1)) {
-        CF.app.toast(t('hint.switch'), 'info');
-      }
-      return;
-    }
-    if (this.activeChar !== id) {
-      this.activeChar = id;
-      CF.audio.play(CF.cues.uiClick, { gain: 0.5 });
-      this.fx.burst(this.chars[id].x + 10, this.chars[id].y, this.chars[id].def.accent, 8, 50);
-    }
   };
 
   Game.prototype.idlePhysics = function (ch, dt, solids) {
@@ -494,16 +495,77 @@
     return best;
   };
 
+  Game.prototype.taskTypeFor = function (dev) {
+    if (!dev) return null;
+    if (dev.type === 'harmonic') return 'resonance';
+    if (dev.type === 'glyph') return 'glyph';
+    if (dev.type === 'altar') {
+      if (dev.char === 'p1') return 'echo';
+      if (dev.char === 'p2') return 'resonance';
+      return 'glyph';
+    }
+    return null;
+  };
+
+  Game.prototype.beginTask = function (dev) {
+    if (!dev || this.taskOpen || this.devices[dev.id]) return;
+    var type = this.taskTypeFor(dev);
+    if (!type || !CF.tasks) {
+      this.tryActivateDevice(dev);
+      return;
+    }
+    var self = this;
+    this.taskOpen = true;
+    if (this.input) this.input.enabled = false;
+    CF.tasks.open({
+      char: this.activeChar,
+      type: type,
+      difficulty: this.difficulty.id,
+      device: dev.id,
+      onComplete: function () {
+        self.taskOpen = false;
+        if (self.input) self.input.enabled = true;
+        self.tryActivateDevice(dev);
+      },
+      onCancel: function () {
+        self.taskOpen = false;
+        if (self.input) self.input.enabled = true;
+      }
+    });
+  };
+
   Game.prototype.useAbility = function (ch) {
     if (!ch || this.time < this.collapseUntil) return;
     var ability = ch.def.ability;
     var cx = ch.x + ch.w / 2;
     var cy = ch.y + ch.h / 2;
 
+    if (this.mode === 'solo' || this.mode === 'online') {
+      var soloDev = this.nearDevice(ch, ['altar', 'harmonic', 'glyph'], 96);
+      if (soloDev) {
+        this.beginTask(soloDev);
+        return;
+      }
+      if (this.time < this.echoCooldownUntil) return;
+      this.echoCooldownUntil = this.time + 4;
+      this.echoUntil = this.time + 10;
+      if (this.online && !this.isHost) {
+        this.online.send({ t: 'action', kind: 'echo' });
+      }
+      if (this.online && this.isHost) {
+        this.online.send({ t: 'echoState', until: this.time + 10 });
+      }
+      this.fx.burst(cx, cy, ch.def.accent, 30, 170);
+      this.ring(cx, cy, ch.def.accent);
+      CF.audio.play(CF.cues.echo, { gain: 0.7 });
+      CF.app.toast(t('msg.echo'), 'ok');
+      return;
+    }
+
     if (ability === 'echo') {
       var altar = this.nearDevice(ch, ['altar'], 92);
       if (altar && altar.char === 'p1') {
-        this.tryActivateDevice(altar);
+        this.beginTask(altar);
         return;
       }
       if (this.time < this.echoCooldownUntil) return;
@@ -526,12 +588,12 @@
     if (ability === 'resonance') {
       var altar2 = this.nearDevice(ch, ['altar'], 92);
       if (altar2 && altar2.char === 'p2') {
-        this.tryActivateDevice(altar2);
+        this.beginTask(altar2);
         return;
       }
       var dev = this.nearDevice(ch, ['harmonic'], 92);
       if (dev) {
-        this.tryActivateDevice(dev);
+        this.beginTask(dev);
         return;
       }
       this.fx.burst(cx, cy, ch.def.accent, 12, 90);
@@ -543,12 +605,12 @@
     if (ability === 'glyph') {
       var altar3 = this.nearDevice(ch, ['altar'], 92);
       if (altar3 && altar3.char === 'p3') {
-        this.tryActivateDevice(altar3);
+        this.beginTask(altar3);
         return;
       }
       var dev2 = this.nearDevice(ch, ['glyph'], 92);
       if (dev2) {
-        this.tryActivateDevice(dev2);
+        this.beginTask(dev2);
         return;
       }
       if (this.online && !this.isHost) {
@@ -669,7 +731,12 @@
       if (d.type === 'plates') {
         var pressed = 0;
         for (var p = 0; p < d.plates.length; p++) {
-          if (this.platePressed(d.plates[p])) pressed++;
+          var plateId = d.plates[p];
+          var plateOn = this.platePressed(plateId) || (this.mode === 'solo' && !!this.soloPlates[plateId]);
+          if (plateOn) {
+            pressed++;
+            if (this.mode === 'solo') this.soloPlates[plateId] = true;
+          }
         }
         if (pressed >= d.plates.length && !this.doors[d.id]) {
           this.doors[d.id] = true;
@@ -925,10 +992,12 @@
 
     ctx.clearRect(0, 0, E.W, E.H);
     E.drawBackground(ctx, level, camX, this.time, quality, reduced);
+    if (E.drawAtmosphere) E.drawAtmosphere(ctx, level, camX, this.time, quality, reduced);
 
     ctx.save();
     ctx.translate(-Math.round(camX) + shakeX, -Math.round(camY) + shakeY);
 
+    E.drawDecor(ctx, level, camX, reduced ? 0 : this.time, quality);
     E.drawCore(ctx, level, this.time);
 
     var i;
@@ -968,7 +1037,8 @@
 
     for (i = 0; i < level.plates.length; i++) {
       var plate = level.plates[i];
-      E.drawPlate(ctx, plate, this.platePressed(plate.id), this.time);
+      var plateOn = this.platePressed(plate.id) || (this.mode === 'solo' && !!this.soloPlates[plate.id]);
+      E.drawPlate(ctx, plate, plateOn, this.time);
     }
     for (i = 0; i < level.checkpoints.length; i++) {
       var cp = level.checkpoints[i];
@@ -1011,6 +1081,7 @@
     for (i = 0; i < order.length; i++) {
       var ch = this.chars[order[i]];
       if (!ch) continue;
+      if (this.mode === 'solo' && !this.owner[ch.id]) continue;
       var frame;
       if (!ch.onGround) frame = 2;
       else if (Math.abs(ch.vx) > 12) frame = Math.floor(ch.anim) % 6;
@@ -1032,11 +1103,14 @@
       ctx.restore();
     }
 
+    if (E.drawForeground) E.drawForeground(ctx, level, camX, reduced ? 0 : this.time, quality);
     if (reveal) this.drawEcho(ctx);
     this.fx.draw(ctx, 0, 0);
 
     ctx.restore();
 
+    if (E.drawScreenForeground) E.drawScreenForeground(ctx, level, camX, reduced ? 0 : this.time, quality);
+    this.drawRemoteIndicators(ctx);
     this.drawAmbient(ctx, level, camX);
     this.drawHUD(ctx);
 
@@ -1070,7 +1144,7 @@
   };
 
   Game.prototype.drawEcho = function (ctx) {
-    var ch = this.chars.p1;
+    var ch = this.mode === 'solo' ? this.chars[this.activeChar] : this.chars.p1;
     if (!ch) return;
     var cx = ch.x + ch.w / 2;
     var cy = ch.y + ch.h / 2;
@@ -1114,12 +1188,44 @@
       var p = this.ambient[i];
       var x = (p.x - camX * 0.25) % (E.W + 40);
       if (x < -20) x += E.W + 40;
-      ctx.globalAlpha = 0.3 + 0.3 * Math.sin(this.time + p.ph);
+      ctx.globalAlpha = 0.28 + 0.30 * Math.sin(this.time + p.ph);
       ctx.fillStyle = col;
       ctx.fillRect(Math.round(x), Math.round(p.y), p.sz, p.sz);
     }
     ctx.restore();
     void theme;
+  };
+
+  Game.prototype.drawRemoteIndicators = function (ctx) {
+    if (this.mode !== 'online') return;
+    for (var i = 0; i < CF.characters.length; i++) {
+      var id = CF.characters[i].id;
+      var ch = this.chars[id];
+      if (!ch || this.owner[id]) continue;
+      var sx = ch.x - this.camera.x;
+      if (sx > -30 && sx < E.W + 30) continue;
+      var right = sx > E.W;
+      var x = right ? E.W - 24 : 24;
+      var y = E.clamp(ch.y + ch.h / 2, 76, E.H - 142);
+      var dist = Math.max(0, Math.round(Math.abs(sx - E.W / 2) / 10));
+      ctx.save();
+      ctx.globalAlpha = 0.86;
+      ctx.fillStyle = ch.def.accent;
+      ctx.beginPath();
+      if (right) {
+        ctx.moveTo(x + 8, y - 8);
+        ctx.lineTo(x + 8, y + 8);
+        ctx.lineTo(x - 4, y);
+      } else {
+        ctx.moveTo(x - 8, y - 8);
+        ctx.lineTo(x - 8, y + 8);
+        ctx.lineTo(x + 4, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      E.txt(ctx, (this.remoteNames[id] || ch.def.slot) + ' ' + dist + 'm', x + (right ? 14 : -14), y - 10, 7, ch.def.accent, right ? 'right' : 'left');
+      ctx.restore();
+    }
   };
 
   Game.prototype.drawHUD = function (ctx) {
@@ -1165,7 +1271,7 @@
         E.panel(ctx, pad, E.H - 84, 300, 72, 0.66);
         E.drawCharacter(ctx, active.def, pad + 28, E.H - 20, 1, 0, { height: 42, time: this.time });
         E.txt(ctx, t(active.def.nameKey), pad + 54, E.H - 56, 9.5, active.def.accent);
-        E.txt(ctx, t(active.def.abilityKey), pad + 54, E.H - 40, 8.5, '#e9f2ff');
+        E.txt(ctx, this.mode === 'solo' ? t('hud.soloAbility') : t(active.def.abilityKey), pad + 54, E.H - 40, 8.5, '#e9f2ff');
         var cd = this.abilityCooldown(active);
         var txt = cd > 0 ? t('hud.cooldown') + ' ' + cd.toFixed(1) + 's' : t('hud.ready');
         E.txt(ctx, txt, pad + 54, E.H - 25, 8, cd > 0 ? '#ffbf5e' : '#57ffa8');
@@ -1173,8 +1279,8 @@
           E.txt(ctx, 'ECO ' + Math.ceil(this.echoUntil - this.time) + 's', pad + 200, E.H - 56, 7.5, '#52f0e6');
         }
       }
-      if (this.mode === 'solo' || (this.mode === 'online' && this.localChars.length > 1)) {
-        E.txt(ctx, t('hud.switch'), E.W - pad - 12, E.H - 20, 7.5, '#8ea2c7', 'right');
+      if (this.mode === 'online') {
+        E.txt(ctx, t('hud.locked') + ' �� ' + this.startChar.toUpperCase(), E.W - pad - 12, E.H - 20, 7.5, '#57ffa8', 'right');
       }
     } else {
       E.panel(ctx, pad, E.H - 88, 420, 76, 0.62);
@@ -1252,7 +1358,7 @@
 
   Game.prototype.abilityCooldown = function (ch) {
     if (!ch) return 0;
-    if (ch.def.ability === 'echo') {
+    if (this.mode === 'solo' || ch.def.ability === 'echo') {
       return Math.max(0, (this.echoCooldownUntil || 0) - this.time);
     }
     return 0;
@@ -1266,26 +1372,39 @@
       for (var a = 0; a < lvl.devices.length; a++) {
         if (lvl.devices[a].type === 'altar' && this.devices[lvl.devices[a].id]) activeAltars++;
       }
-      if (activeAltars === 0) return this.difficulty.hintLevel === 'minimal' ? t('hint.altar') : t('hint.altar');
+      if (this.mode === 'solo') return activeAltars === 0 ? t('hint.soloAltar') : t('hint.soloAltarWindow');
+      if (activeAltars === 0) return t('hint.altar');
       return t('hint.altarWindow');
     }
     if (this.allShards()) return t('hint.exitOpen');
     var ch = this.chars[this.activeChar];
     var x = ch ? ch.x : 0;
     var hint;
-    if (x < 1050) hint = 'hint.echo';
-    else if (x < 1700) hint = 'hint.echo';
-    else if (x < 1950) hint = 'hint.plates';
-    else if (x < 2200) hint = 'hint.glyph';
-    else hint = 'hint.harmonic';
+    if (x < 1700) hint = 'echo';
+    else if (x < 1950) hint = 'plates';
+    else if (x < 2200) hint = 'glyph';
+    else hint = 'harmonic';
+    if (this.mode === 'solo') {
+      if (this.difficulty.hintLevel === 'minimal') {
+        if (hint === 'echo') return t('hint.soloEcho');
+        if (hint === 'plates') return t('hint.soloPlates');
+        if (hint === 'glyph') return t('hint.soloGlyph');
+        return t('hint.soloHarmonic');
+      }
+      if (hint === 'echo') return t('hint.soloEcho');
+      if (hint === 'plates') return t('hint.soloPlates');
+      if (hint === 'glyph') return t('hint.soloGlyph');
+      return t('hint.soloHarmonic');
+    }
+    hint = 'hint.' + hint;
     if (this.difficulty.hintLevel === 'minimal') {
       if (hint === 'hint.echo') return t('hint.hidden');
       if (hint === 'hint.plates') return t('hint.platesShort');
       if (hint === 'hint.glyph') return t('hint.glyphShort');
       return t('hint.harmonicShort');
     }
-    if (this.mode === 'online' && this.localChars.length < 3) {
-      if (x < 1200) return t('hint.onlineFew');
+    if (this.mode === 'online' && this.online && this.online.players && this.online.players.length < 3 && x < 1200) {
+      return t('hint.onlineFew');
     }
     return t(hint);
   };

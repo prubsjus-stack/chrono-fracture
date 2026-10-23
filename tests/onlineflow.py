@@ -1,4 +1,4 @@
-import time
+﻿import time
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
@@ -24,6 +24,9 @@ def menu_online(page, char=None):
         page.click(f'[data-char="{char}"]')
     page.click('[data-action="online-done"]')
     connected(page)
+    if not wait_screen(page, "online-menu", 120):
+        page.click('[data-action="online-done"]')
+        assert wait_screen(page, "online-menu", 120), "online menu"
 
 def screen(page):
     return page.evaluate("() => CF.app.state.screen")
@@ -63,29 +66,47 @@ with sync_playwright() as p:
     gp.fill("#join-code", CODE)
     gp.click('[data-action="join-code"]')
     assert wait_screen(gp, "lobby", 100), "guest did not join"
+
+    g3ctx = browser.new_context(viewport={"width": 1280, "height": 800})
+    g3p = g3ctx.new_page(); g3p.on("pageerror", lambda e: errors.append("THIRD " + str(e)))
+    menu_online(g3p, "p3")
+    g3p.click('[data-action="goto-join-code"]')
+    g3p.wait_for_timeout(350)
+    g3p.fill("#join-code", CODE)
+    g3p.click('[data-action="join-code"]')
+    assert wait_screen(g3p, "lobby", 100), "third did not join"
+
     hp.wait_for_timeout(900)
+    assert hp.evaluate("() => CF.online.room.players.length") == 3, "host room should have three players"
     hp.click('[data-action="start-online"]')
     assert wait_screen(hp, "intro", 80), "host intro"
     assert wait_screen(gp, "intro", 80), "guest intro"
+    assert wait_screen(g3p, "intro", 80), "third intro"
     hp.click('[data-action="continue-intro"]')
     gp.click('[data-action="continue-intro"]')
+    g3p.click('[data-action="continue-intro"]')
     assert wait_screen(hp, "game", 60), "host game"
     assert wait_screen(gp, "game", 60), "guest game"
-    print("START", hp.evaluate("() => [CF.game.levelIndex, CF.game.localChars]"), gp.evaluate("() => [CF.game.levelIndex, CF.game.localChars]"))
+    assert wait_screen(g3p, "game", 60), "third game"
+    print("START", hp.evaluate("() => [CF.game.levelIndex, CF.game.localChars]"), gp.evaluate("() => [CF.game.levelIndex, CF.game.localChars]"), g3p.evaluate("() => [CF.game.levelIndex, CF.game.localChars]"))
 
     for lvl in range(2):
         complete_level(hp)
         assert wait_screen(hp, "complete", 80), f"host complete {lvl}"
         assert wait_screen(gp, "complete", 80), f"guest complete {lvl}"
-        print("COMPLETE", lvl, screen(hp), screen(gp))
+        assert wait_screen(g3p, "complete", 80), f"third complete {lvl}"
+        print("COMPLETE", lvl, screen(hp), screen(gp), screen(g3p))
         hp.click('[data-action="next-level"]')
         assert wait_screen(hp, "intro", 80), f"host intro {lvl}"
         assert wait_screen(gp, "intro", 80), f"guest intro {lvl}"
-        print("INTRO", hp.evaluate("() => CF.game.levelIndex"), gp.evaluate("() => CF.game.levelIndex"))
+        assert wait_screen(g3p, "intro", 80), f"third intro {lvl}"
+        print("INTRO", hp.evaluate("() => CF.game.levelIndex"), gp.evaluate("() => CF.game.levelIndex"), g3p.evaluate("() => CF.game.levelIndex"))
         hp.click('[data-action="continue-intro"]')
         gp.click('[data-action="continue-intro"]')
+        g3p.click('[data-action="continue-intro"]')
         assert wait_screen(hp, "game", 60), f"host game {lvl}"
         assert wait_screen(gp, "game", 60), f"guest game {lvl}"
+        assert wait_screen(g3p, "game", 60), f"third game {lvl}"
 
     hp.evaluate("""() => {
       const g = CF.game;
@@ -93,10 +114,14 @@ with sync_playwright() as p:
     }""")
     assert wait_screen(hp, "victory", 100), "host victory"
     assert wait_screen(gp, "victory", 100), "guest victory"
-    print("VICTORY", hp.evaluate("() => [CF.app.state.victoryShown, CF.online.room.status]"), gp.evaluate("() => [CF.app.state.victoryShown, CF.online.room.status]"))
+    assert wait_screen(g3p, "victory", 100), "third victory"
+    print("VICTORY", hp.evaluate("() => [CF.app.state.victoryShown, CF.online.room.status]"), gp.evaluate("() => [CF.app.state.victoryShown, CF.online.room.status]"), g3p.evaluate("() => [CF.app.state.victoryShown, CF.online.room.status]"))
     hp.screenshot(path=str(SHOTS / "v01-host-victory.png"))
     gp.screenshot(path=str(SHOTS / "v02-guest-victory.png"))
+    g3p.screenshot(path=str(SHOTS / "v03-third-victory.png"))
     print("ERRORS", errors)
     hp.evaluate("() => CF.online.leaveRoom(true)")
     gp.evaluate("() => CF.online.leaveRoom(true)")
+    g3p.evaluate("() => CF.online.leaveRoom(true)")
     browser.close()
+

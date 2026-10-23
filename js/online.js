@@ -557,6 +557,7 @@
   function startGameHost() {
     if (!O.isHost || !O.room) return Promise.reject(new Error('host'));
     if (O.room.status !== 'lobby') return Promise.reject(new Error('started'));
+    if (!(O.room.players || []).length) return Promise.reject(new Error('needPlayer'));
     O.room.status = 'playing';
     O.room.level = 0;
     publishRoomState(true);

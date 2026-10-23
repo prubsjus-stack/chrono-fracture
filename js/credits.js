@@ -75,7 +75,7 @@
   function blockHtml(sec) {
     if (sec.final) {
       return '<div class="credit-block">' +
-        '<div class="credit-logo">CHRONO<br>FRACTURE</div>' +
+        '<div class="credit-logo">BROKEN<br>FREQUENCY</div>' +
         '<p class="small">' + esc(t('credits.final')) + '</p>' +
         '<p class="small" style="margin-top:26px">' + esc(t('credits.legal')) + '</p>' +
         '<p class="small" style="margin-top:18px">' + esc(CF.TITLE) + ' v' + esc(CF.VERSION) + ' — ' + esc(t('credits.engine')) + '</p>' +
