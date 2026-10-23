@@ -29,7 +29,24 @@
       esc: 'ESC PARA SALIR',
       roleEcho: 'ECO',
       roleRes: 'RESONANCIA',
-      roleGlyph: 'GLIFO'
+      roleGlyph: 'GLIFO',
+      roleTruth: 'VERDAD',
+      roleAction: 'ANCLA',
+      orbsTitle: 'ORBE ESTABLE',
+      orbsDescV: 'Solo tú ves cuál orbe es REAL. Dile a tu compañero cuál marcar en su consola.',
+      orbsDescA: 'Tres orbes: solo uno es real. Pregúntale a tu compañero cuál.',
+      orbsReal: 'EL ORBE REAL',
+      orbsListen: 'AVISA A TU COMPAÑERO',
+      orbsDone: 'MENSAJE ENVIADO A LA ANCLA',
+      orbsHint: 'PREGÚNTALE A TU COMPAÑERO',
+      orbsWrong: 'ORBE FALSO',
+      codeTitle: 'CLAVE ENTRE ERAS',
+      codeDescV: 'Código completo. Dile a tu compañero los dos dígitos que faltan.',
+      codeDescA: 'Dos huecos en el código. Pide a tu compañero los dígitos.',
+      codeSlots: 'CLAVE',
+      codePad: 'DÍGITO',
+      codeWrong: 'DÍGITO ERRÓNEO',
+      codeDone: 'MENSAJE ENVIADO A LA ANCLA'
     },
     en: {
       kicker: '{role} CONSOLE',
@@ -56,7 +73,24 @@
       esc: 'ESC TO LEAVE',
       roleEcho: 'ECHO',
       roleRes: 'RESONANCE',
-      roleGlyph: 'GLYPH'
+      roleGlyph: 'GLYPH',
+      roleTruth: 'TRUTH',
+      roleAction: 'ANCHOR',
+      orbsTitle: 'STABLE ORB',
+      orbsDescV: 'Only you can see which orb is REAL. Tell your partner which one to pick.',
+      orbsDescA: 'Three orbs: only one is real. Ask your partner which one.',
+      orbsReal: 'THE REAL ORB',
+      orbsListen: 'TELL YOUR PARTNER',
+      orbsDone: 'MESSAGE SENT TO ANCHOR',
+      orbsHint: 'ASK YOUR PARTNER',
+      orbsWrong: 'FALSE ORB',
+      codeTitle: 'KEY ACROSS ERAS',
+      codeDescV: 'Full code. Tell your partner the two missing digits.',
+      codeDescA: 'Two gaps in the code. Ask your partner for the digits.',
+      codeSlots: 'CODE',
+      codePad: 'DIGIT',
+      codeWrong: 'WRONG DIGIT',
+      codeDone: 'MESSAGE SENT TO ANCHOR'
     },
     pt: {
       kicker: 'CONSOLE DE {role}',
@@ -83,7 +117,24 @@
       esc: 'ESC PARA SAIR',
       roleEcho: 'ECO',
       roleRes: 'RESSONÂNCIA',
-      roleGlyph: 'GLIFO'
+      roleGlyph: 'GLIFO',
+      roleTruth: 'VERDADE',
+      roleAction: 'ÂNCORA',
+      orbsTitle: 'ORBE ESTÁVEL',
+      orbsDescV: 'Só você vê qual orbe é REAL. Diga ao parceiro qual marcar.',
+      orbsDescA: 'Três orbes: só um é real. Pergunte ao parceiro qual.',
+      orbsReal: 'O ORBE REAL',
+      orbsListen: 'AVISE SEU PARCEIRO',
+      orbsDone: 'MENSAGEM ENVIADA À ÂNCORA',
+      orbsHint: 'PERGUNTE AO SEU PARCEIRO',
+      orbsWrong: 'ORBE FALSO',
+      codeTitle: 'CHAVE ENTRE ERAS',
+      codeDescV: 'Código completo. Diga ao parceiro os dois dígitos que faltam.',
+      codeDescA: 'Dois espaços no código. Peça os dígitos ao parceiro.',
+      codeSlots: 'CÓDIGO',
+      codePad: 'DÍGITO',
+      codeWrong: 'DÍGITO ERRADO',
+      codeDone: 'MENSAGEM ENVIADA À ÂNCORA'
     }
   };
 
@@ -192,10 +243,15 @@
 
   function updateProgress() {
     if (!state) return;
-    var total = state.type === 'resonance' ? state.meters.length : state.total;
+    var isCodeAction = state.link && state.link.mode === 'code' && state.link.role === 'action';
+    var total = state.type === 'resonance' ? state.meters.length : isCodeAction ? state.total : state.total;
     var done = state.type === 'resonance'
       ? state.meters.filter(function (m) { return m.locked; }).length
-      : state.input.length;
+      : isCodeAction
+        ? state.fill.length
+        : state.link && state.link.mode === 'code' && state.link.role === 'vision'
+          ? (state.done ? 1 : 0)
+          : state.input.length;
     var pips = layer && layer.querySelector('[data-task-pips]');
     if (pips) {
       var html = '';
@@ -245,9 +301,19 @@
 
   function buildFrame(role, type) {
     var accent = role.accent;
-    var title = type === 'echo' ? tx('echoTitle') : type === 'resonance' ? tx('resTitle') : tx('glyphTitle');
-    var desc = type === 'echo' ? tx('echoDesc') : type === 'resonance' ? tx('resDesc') : tx('glyphDesc');
-    var roleLabel = type === 'echo' ? tx('roleEcho') : type === 'resonance' ? tx('roleRes') : tx('roleGlyph');
+    var linkRole = (type === 'link' && state && state.opts && state.opts.link && state.opts.link.role) || 'vision';
+    var linkMode = (type === 'link' && state && state.opts && state.opts.link && state.opts.link.mode) || 'orbs';
+    var title = type === 'echo' ? tx('echoTitle') : type === 'resonance' ? tx('resTitle') : type === 'link'
+      ? (linkMode === 'code' ? tx('codeTitle') : tx('orbsTitle'))
+      : tx('glyphTitle');
+    var desc = type === 'echo' ? tx('echoDesc') : type === 'resonance' ? tx('resDesc') : type === 'link'
+      ? (linkMode === 'code'
+        ? (linkRole === 'vision' ? tx('codeDescV') : tx('codeDescA'))
+        : (linkRole === 'vision' ? tx('orbsDescV') : tx('orbsDescA')))
+      : tx('glyphDesc');
+    var roleLabel = type === 'echo' ? tx('roleEcho') : type === 'resonance' ? tx('roleRes') : type === 'link'
+      ? (linkRole === 'vision' ? tx('roleTruth') : tx('roleAction'))
+      : tx('roleGlyph');
     var html = '' +
       '<div class="task-frame" style="--accent:' + accent + ';--accent-rgb:' + role.accentRgb + '">' +
         '<div class="task-top">' +
@@ -524,6 +590,163 @@
     }
   }
 
+  function linkInfo() {
+    return (state && state.opts && state.opts.link) || null;
+  }
+
+  function buildLinkOrbs(stage) {
+    var link = linkInfo();
+    var isVision = link && link.role === 'vision';
+    state.total = 1;
+    state.link = link;
+    var html = '<div class="link-console">' +
+      '<div class="link-title">' + (isVision ? tx('orbsReal') : tx('orbsHint')) + '</div>' +
+      '<div class="link-orbs">';
+    for (var i = 0; i < 3; i++) {
+      var real = isVision && link.correct === i;
+      html += '<div class="link-orb' + (real ? ' real' : '') + '" data-orb="' + i + '"><b>A B C'.charAt(i * 2) + '</b><i></i></div>';
+    }
+    html += '</div><div class="link-tip">' + (isVision ? tx('orbsListen') : tx('orbsDescA')) + '</div>';
+    if (isVision) {
+      html += '<button type="button" class="res-lock" data-link-confirm>' + tx('orbsDone') + '</button>';
+    } else {
+      html += '<div class="link-pad">';
+      for (var p = 0; p < 3; p++) {
+        html += '<button type="button" class="res-lock link-pad-btn" data-link-orb="' + p + '">' + 'ABC'.charAt(p) + '</button>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+    stage.innerHTML = html;
+    state.locked = false;
+    if (isVision) {
+      setReadout(tx('orbsReal'));
+      setStatus(tx('orbsListen'));
+      var confirmBtn = stage.querySelector('[data-link-confirm]');
+      if (confirmBtn) confirmBtn.addEventListener('click', function () {
+        if (!state || state.done) return;
+        completeTask();
+      });
+    } else {
+      setReadout(tx('orbsHint'));
+      setStatus(tx('orbsHint'));
+      var cells = stage.querySelectorAll('[data-link-orb]');
+      for (var c = 0; c < cells.length; c++) {
+        (function (btn, idx) {
+          btn.addEventListener('click', function () {
+            btn.textContent = 'ABC'.charAt(idx);
+            if (!state || state.done || state.locked) return;
+            if (state.link && idx === state.link.correct) {
+              btn.textContent = 'ABC'.charAt(idx);
+              completeTask();
+            } else {
+              flashError();
+              setReadout(tx('orbsWrong'), 'err');
+              if (CF.audio) CF.audio.play(CF.cues.error, { gain: 0.55 });
+              state.locked = true;
+              addTimer(function () {
+                if (state && !state.done) {
+                  state.locked = false;
+                  setReadout(tx('orbsHint'));
+                }
+              }, 520);
+            }
+          });
+        })(cells[c], c);
+      }
+    }
+    void html;
+  }
+
+  function buildLinkCode(stage) {
+    var link = linkInfo();
+    var isVision = link && link.role === 'vision';
+    state.link = link;
+    state.code = link && link.code ? link.code.slice() : [0, 0, 0, 0];
+    state.total = 1;
+    if (!isVision) {
+      state.blanks = link && link.blanks ? link.blanks.slice() : [0, 2];
+      state.fill = [];
+      state.total = state.blanks.length;
+    }
+    var codeHtml = '';
+    if (isVision) {
+      for (var i = 0; i < state.code.length; i++) {
+        codeHtml += '<b>' + (state.code[i] + 1) + '</b>';
+      }
+    } else {
+      for (var g = 0; g < state.code.length; g++) {
+        var isBlank = state.blanks.indexOf(g) >= 0;
+        codeHtml += '<b class="' + (isBlank ? 'blank' : 'masked') + '"' + (isBlank ? ' data-slot="' + g + '"' : '') + '>·</b>';
+      }
+    }
+    var html = '<div class="link-console">' +
+      '<div class="link-title">' + (isVision ? tx('codeSlots') : tx('codePad')) + '</div>' +
+      '<div class="link-code">' + codeHtml + '</div>';
+    if (isVision) {
+      html += '<div class="link-tip">' + tx('codeDescV') + '</div>' +
+        '<button type="button" class="res-lock" data-link-confirm>' + tx('codeDone') + '</button>';
+    } else {
+      html += '<div class="link-tip">' + tx('codeDescA') + '</div><div class="link-pad">';
+      for (var d = 0; d < 9; d++) {
+        html += '<button type="button" class="res-lock link-pad-btn" data-link-digit="' + (d + 1) + '">' + (d + 1) + '</button>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+    stage.innerHTML = html;
+    state.locked = false;
+    if (isVision) {
+      setReadout(tx('codeDone'));
+      setStatus(tx('codeDone'));
+      var confirmBtn = stage.querySelector('[data-link-confirm]');
+      if (confirmBtn) confirmBtn.addEventListener('click', function () {
+        if (!state || state.done) return;
+        completeTask();
+      });
+    } else {
+      setReadout(tx('codeDescA'));
+      setStatus(tx('codeDescA'));
+      function fillSlot(value) {
+        if (!state || state.done || state.locked) return;
+        var idx = state.fill.length;
+        if (idx >= state.blanks.length) return;
+        var slotPos = state.blanks[idx];
+        var expect = state.code[slotPos] + 1;
+        if (value === expect) {
+          state.fill.push(value);
+          var cls = '[data-slot="' + slotPos + '"]';
+          var el = stage.querySelector(cls);
+          if (el) el.classList.add('filled');
+          if (el) el.textContent = value;
+          if (CF.audio) CF.audio.play(CF.cues.uiClick, { gain: 0.5 });
+          updateProgress();
+          if (state.fill.length >= state.blanks.length) completeTask();
+        } else {
+          flashError();
+          setReadout(tx('codeWrong'), 'err');
+          if (CF.audio) CF.audio.play(CF.cues.error, { gain: 0.55 });
+          state.locked = true;
+          addTimer(function () {
+            if (state && !state.done) {
+              state.locked = false;
+              setReadout(tx('codeDescA'));
+            }
+          }, 480);
+        }
+      }
+      var digs = stage.querySelectorAll('[data-link-digit]');
+      for (var k = 0; k < digs.length; k++) {
+        (function (btn) {
+          btn.addEventListener('click', function () {
+            fillSlot(Number(btn.getAttribute('data-link-digit')));
+          });
+        })(digs[k]);
+      }
+      state.linkFill = fillSlot;
+    }
+  }
+
   function bindKeys() {
     keyHandler = function (e) {
       if (!state) return;
@@ -546,6 +769,21 @@
         var pad = layer && layer.querySelector('[data-echo="' + idx + '"]');
         if (pad) pad.click();
         return;
+      }
+      if (state.type === 'link') {
+        if (state.link && state.link.mode === 'code' && state.link.role === 'action' && /^Digit[1-9]$/.test(e.code)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          if (state.linkFill) state.linkFill(Number(e.code.slice(-1)));
+          return;
+        }
+        if (state.link && state.link.mode === 'orbs' && state.link.role === 'action' && /^Digit[1-3]$/.test(e.code)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          var orb = layer && layer.querySelector('[data-link-orb="' + (Number(e.code.slice(-1)) - 1) + '"]');
+          if (orb) orb.click();
+          return;
+        }
       }
     };
     window.addEventListener('keydown', keyHandler, true);
@@ -589,6 +827,11 @@
     if (portrait && CF.engine && CF.engine.drawPortrait) CF.engine.drawPortrait(portrait, role.id);
     if (type === 'echo') buildEcho(stage);
     else if (type === 'resonance') buildResonance(stage);
+    else if (type === 'link') {
+      var link = opts.link || {};
+      if (link.mode === 'code') buildLinkCode(stage);
+      else buildLinkOrbs(stage);
+    }
     else buildGlyph(stage);
     updateProgress();
     if (!document.body.classList.contains('is-game')) layer.classList.add('task-layer--menu');

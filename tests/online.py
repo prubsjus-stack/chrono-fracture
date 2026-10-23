@@ -82,7 +82,10 @@ with sync_playwright() as p:
     gp.fill("#join-code", CODE)
     shot(gp, "o04-guest-joincode.png")
     gp.click('[data-action="join-code"]')
-    gp.wait_for_timeout(2500)
+    for _ in range(60):
+        if gp.evaluate("() => CF.app.state.screen") == "lobby":
+            break
+        gp.wait_for_timeout(500)
     print("GUEST LOBBY", gp.evaluate("() => [CF.app.state.screen, CF.online.code, CF.online.room && CF.online.room.players.length]"))
     shot(gp, "o05-guest-lobby.png")
     hp.wait_for_timeout(1200)
@@ -109,7 +112,10 @@ with sync_playwright() as p:
     g3p.wait_for_timeout(500)
     g3p.fill("#join-code", CODE)
     g3p.click('[data-action="join-code"]')
-    g3p.wait_for_timeout(2500)
+    for _ in range(60):
+        if g3p.evaluate("() => CF.app.state.screen") == "lobby":
+            break
+        g3p.wait_for_timeout(500)
     print("THIRD LOBBY", g3p.evaluate("() => [CF.app.state.screen, CF.online.code, CF.online.room && CF.online.room.players.length]"))
     hp.wait_for_timeout(1200)
     print("HOST LOBBY3", hp.evaluate("() => [CF.online.room && CF.online.room.players.map(p => [p.name, p.char])]"))

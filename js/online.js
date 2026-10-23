@@ -560,6 +560,7 @@
     if (!(O.room.players || []).length) return Promise.reject(new Error('needPlayer'));
     O.room.status = 'playing';
     O.room.level = 0;
+    O.positions = {};
     publishRoomState(true);
     var payload = {
       t: 'start',
@@ -580,6 +581,7 @@
   function sendLevel(index) {
     if (!O.isHost || !O.room) return;
     O.room.level = index;
+    O.positions = {};
     publishRoomState(true);
     publish(O.evTopic, { t: 'level', levelIndex: index, ts: now() }, { qos: 1 });
   }
@@ -836,6 +838,7 @@
     }
     if (msg.t === 'level') {
       if (O.isHost) return;
+      O.positions = {};
       if (O.onLevel) O.onLevel(msg.levelIndex || 0);
       return;
     }

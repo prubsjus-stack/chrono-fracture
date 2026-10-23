@@ -947,6 +947,12 @@
     ctx.moveTo(0, -1);
     ctx.quadraticCurveTo(x2 * 0.5, (y2 + sag) * 0.6 - 1, x2, y2 - 1);
     ctx.stroke();
+    ctx.fillStyle = '#1a294d';
+    ctx.fillRect(-3, 0, 6, 8);
+    ctx.fillRect(x2 - 3, y2, 6, 8);
+    ctx.fillStyle = '#66e0ff';
+    ctx.fillRect(-2, 1, 4, 2);
+    ctx.fillRect(x2 - 2, y2 + 1, 4, 2);
     for (var i = 1; i < 5; i++) {
       var t = i / 5;
       var cx = 2 * (1 - t) * t * (x2 * 0.5) + t * t * x2;
@@ -984,6 +990,20 @@
       ctx.fillRect(-20, 18, 40, 1);
       ctx.fillRect(-14, 22, 28, 1);
     }
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(102,224,255,.35)';
+    ctx.lineWidth = 1;
+    for (var b = 0; b < 4; b++) {
+      var by = 24 + hash(seed + b * 5) * 26;
+      ctx.globalAlpha = 0.25 + 0.2 * Math.sin(time * 2 + b);
+      ctx.beginPath();
+      ctx.moveTo(-3, by);
+      ctx.lineTo(3, by + 12);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 0.4 + 0.25 * Math.sin(time * 3 + seed);
+    ctx.fillStyle = '#66e0ff';
+    ctx.fillRect(-2, 50, 4, 5);
     ctx.restore();
   }
 
@@ -1324,7 +1344,7 @@
     var sway = Math.sin(time * 0.9 + seed) * 2;
     ctx.strokeStyle = '#262b36';
     ctx.lineWidth = 2;
-    for (var i = 0; i < 8; i++) {
+    for (var i = 0; i < 9; i++) {
       var y = -i * 10;
       var x = sway * (i / 8);
       ctx.beginPath();
@@ -1332,7 +1352,7 @@
       ctx.stroke();
     }
     ctx.fillStyle = 'rgba(102,224,255,.5)';
-    ctx.fillRect(sway - 1, -82, 2, 2);
+    ctx.fillRect(sway - 1, -92, 2, 2);
   }
 
   function drawStalagmite(ctx, time, seed, quality) {
@@ -1859,6 +1879,47 @@
           ctx.stroke();
         }
       }
+    } else if (d.type === 'link') {
+      var es = CF.i18n && CF.i18n.getLang && CF.i18n.getLang() === 'es';
+      var lib = d.role === 'vision' ? (es ? 'VERDAD' : 'TRUTH') : (es ? 'ANCLA' : 'ANCHOR');
+      var pulse = 0.55 + 0.3 * Math.sin(time * 2.6 + d.x);
+      ctx.fillStyle = 'rgba(3,7,16,.86)';
+      ctx.fillRect(-17, -10, 34, 10);
+      ctx.fillStyle = 'rgba(87,255,168,.3)';
+      ctx.fillRect(-14, -13, 28, 4);
+      ctx.strokeStyle = active ? '#57ffa8' : '#7ef7ff';
+      ctx.lineWidth = 1.4;
+      ctx.globalAlpha = active ? 0.9 : pulse;
+      ctx.beginPath();
+      ctx.moveTo(0, -12);
+      ctx.lineTo(0, -40);
+      ctx.stroke();
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      var g = ctx.createRadialGradient(0, -42, 2, 0, -42, 30);
+      g.addColorStop(0, active ? 'rgba(120,255,180,.45)' : 'rgba(126,247,255,' + pulse * 0.4 + ')');
+      g.addColorStop(1, 'rgba(60,200,255,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(-30, -72, 60, 60);
+      ctx.restore();
+      ctx.fillStyle = active ? '#57ffa8' : '#7ef7ff';
+      ctx.beginPath();
+      ctx.arc(0, -42, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(0, -50);
+      ctx.lineTo(6, -42);
+      ctx.lineTo(0, -34);
+      ctx.lineTo(-6, -42);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#d6ffe6';
+      ctx.font = '7px Silkscreen, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(lib, 0, -58);
+      ctx.fillStyle = '#a9bbd8';
+      ctx.fillText(d.label || '', 0, 8);
     }
     ctx.restore();
     void theme;
@@ -1866,11 +1927,26 @@
 
   function drawDoor(ctx, door, openT, time, era) {
     var theme = CF.themes[era];
-    var col = door.type === 'glyph' ? '#b98bff' : door.type === 'harmonic' ? '#ffbf5e' : (era === 'nucleo' ? '#66e0ff' : '#52f0e6');
+    var col = door.type === 'glyph' ? '#b98bff' : door.type === 'harmonic' ? '#ffbf5e' : door.type === 'link' ? '#57ffa8' : (era === 'nucleo' ? '#66e0ff' : '#52f0e6');
+    var isLink = door.type === 'link';
+    var es = CF.i18n && CF.i18n.getLang && CF.i18n.getLang() === 'es';
     ctx.save();
     var alpha = 1 - openT;
     if (alpha <= 0.02) { ctx.restore(); return; }
     ctx.globalAlpha = alpha;
+    // pulsing link lock pillar so players can spot the puzzle from afar
+    if (isLink && alpha > 0.6) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      var pulse = 0.4 + 0.25 * Math.sin(time * 2.4);
+      var pg = ctx.createLinearGradient(door.x, door.y - 180, door.x, door.y + door.h);
+      pg.addColorStop(0, 'rgba(87,255,168,0)');
+      pg.addColorStop(0.65, 'rgba(87,255,168,' + (pulse * 0.32) + ')');
+      pg.addColorStop(1, 'rgba(87,255,168,0)');
+      ctx.fillStyle = pg;
+      ctx.fillRect(door.x - 16, door.y - 180, door.w + 32, door.h + 180);
+      ctx.restore();
+    }
     ctx.fillStyle = 'rgba(5,8,18,.72)';
     ctx.fillRect(door.x, door.y, door.w, door.h);
     var grad = ctx.createLinearGradient(door.x, 0, door.x + door.w, 0);
@@ -1896,7 +1972,7 @@
     ctx.font = '7px Silkscreen, monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#e9f2ff';
-    ctx.fillText(door.type === 'glyph' ? 'GLYPH' : door.type === 'plates' ? 'ANCHOR' : 'CORE', door.x + door.w / 2, door.y - 8);
+    ctx.fillText(door.type === 'glyph' ? 'GLYPH' : door.type === 'plates' ? 'ANCHOR' : isLink ? (es ? 'ENLACE' : 'LINK') : 'CORE', door.x + door.w / 2, door.y - 8);
     ctx.restore();
     void theme;
   }

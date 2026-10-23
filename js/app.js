@@ -360,6 +360,7 @@
       name: CF.online.myName || CF.store.profile().name,
       online: {
         isHost: isHost,
+        myId: myId,
         players: players,
         playerNames: playerNamesMap(players),
         ping: CF.online.ping,

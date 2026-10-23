@@ -105,6 +105,7 @@
     this.online = this.cfg.online || null;
     this.isHost = !!(this.online && this.online.isHost);
     this.playerName = this.cfg.name || '';
+    this.altarBy = {};
 
     this.time = 0;
     this.fracture = 0;
@@ -114,6 +115,8 @@
     this.doors = {};
     this.bridges = {};
     this.soloPlates = {};
+    this.links = {};
+    this.initLinks();
     this.echoUntil = 0;
     this.echoCooldownUntil = 0;
     this.sealDeadline = 0;
@@ -194,6 +197,69 @@
     this.owner[id] = true;
     this.chars[id].remote = false;
     if (!this.activeChar) this.activeChar = id;
+    return true;
+  };
+
+  function linkHash(str, salt) {
+    var h = 2166136261 ^ salt;
+    for (var i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    h >>>= 0;
+    return (h % 10000) / 10000;
+  }
+
+  Game.prototype.initLinks = function () {
+    this.links = {};
+    this.linkSeed = this.online
+      ? ((this.online.code || 'room') + '#' + this.levelIndex)
+      : (Math.round(Math.random() * 1e9).toString(36) + '#' + this.levelIndex);
+    this.linkSeed += '#' + this.difficulty.id;
+    var level = this.level;
+    if (!level) return;
+    for (var i = 0; i < level.devices.length; i++) {
+      var d = level.devices[i];
+      if (d.type !== 'link') continue;
+      var pair = d.pair;
+      var base = this.linkSeed + '#' + pair;
+      if (!pair || this.links[pair]) continue;
+      var entry;
+      if (d.mode === 'code') {
+        var digits = [];
+        for (var g = 0; g < 4; g++) digits.push(Math.floor(linkHash(base + '#d' + g, 7) * 9));
+        var blanks = [];
+        for (var b = 0; b < digits.length && blanks.length < 2; b++) {
+          if (linkHash(base + '#b' + b, 19) < 0.5) blanks.push(b);
+        }
+        if (blanks.length < 2) blanks = [0, digits.length > 2 ? digits.length - 1 : 1];
+        entry = { correct: -1, code: digits, blanks: blanks, vision: 0, by: '', byClient: '', solved: false };
+      } else {
+        entry = { correct: Math.floor(linkHash(base, 3) * 3), code: [], blanks: [], vision: 0, by: '', byClient: '', solved: false };
+      }
+      this.links[pair] = entry;
+    }
+  };
+
+  Game.prototype.linkReady = function (dev, ch) {
+    if (!dev || dev.type !== 'link') return true;
+    var l = this.links[dev.pair];
+    if (dev.role !== 'action') return true;
+    if (!l || !l.vision || this.time > l.vision) {
+      CF.app.toast(t('msg.linkNeed'), 'err');
+      return false;
+    }
+    if (this.online && this.online.myId) {
+      if (l.byClient && l.byClient === this.online.myId) {
+        CF.app.toast(t('msg.linkNeed'), 'err');
+        return false;
+      }
+      return true;
+    }
+    if (l.by && ch && l.by === ch.id) {
+      CF.app.toast(t('msg.linkNeed'), 'err');
+      return false;
+    }
     return true;
   };
 
@@ -499,6 +565,7 @@
     if (!dev) return null;
     if (dev.type === 'harmonic') return 'resonance';
     if (dev.type === 'glyph') return 'glyph';
+    if (dev.type === 'link') return 'link';
     if (dev.type === 'altar') {
       if (dev.char === 'p1') return 'echo';
       if (dev.char === 'p2') return 'resonance';
@@ -517,7 +584,7 @@
     var self = this;
     this.taskOpen = true;
     if (this.input) this.input.enabled = false;
-    CF.tasks.open({
+    var opts = {
       char: this.activeChar,
       type: type,
       difficulty: this.difficulty.id,
@@ -531,95 +598,66 @@
         self.taskOpen = false;
         if (self.input) self.input.enabled = true;
       }
-    });
+    };
+    if (dev.type === 'link') {
+      var l = this.links[dev.pair];
+      opts.link = {
+        role: dev.role,
+        mode: dev.mode,
+        pair: dev.pair,
+        correct: l ? l.correct : 0,
+        code: l ? l.code : [],
+        blanks: l ? l.blanks : []
+      };
+      if (opts.link.mode === 'orbs') opts.link.code = [];
+    }
+    CF.tasks.open(opts);
   };
 
   Game.prototype.useAbility = function (ch) {
     if (!ch || this.time < this.collapseUntil) return;
-    var ability = ch.def.ability;
     var cx = ch.x + ch.w / 2;
     var cy = ch.y + ch.h / 2;
 
-    if (this.mode === 'solo' || this.mode === 'online') {
-      var soloDev = this.nearDevice(ch, ['altar', 'harmonic', 'glyph'], 96);
-      if (soloDev) {
-        this.beginTask(soloDev);
+    var linkDev = this.nearDevice(ch, ['link'], 92);
+    if (linkDev) {
+      if (!this.linkReady(linkDev, ch)) return;
+      this.beginTask(linkDev);
+      return;
+    }
+
+    var dev = this.nearDevice(ch, ['harmonic', 'glyph'], 96);
+    if (dev) {
+      this.beginTask(dev);
+      return;
+    }
+
+    var altar = this.nearDevice(ch, ['altar'], 92);
+    if (altar) {
+      if (altar.char && altar.char !== ch.id) {
+        CF.app.toast(t('msg.altarNeed', { char: altar.char.toUpperCase() }), 'err');
         return;
       }
-      if (this.time < this.echoCooldownUntil) return;
-      this.echoCooldownUntil = this.time + 4;
-      this.echoUntil = this.time + 10;
-      if (this.online && !this.isHost) {
-        this.online.send({ t: 'action', kind: 'echo' });
-      }
-      if (this.online && this.isHost) {
-        this.online.send({ t: 'echoState', until: this.time + 10 });
-      }
-      this.fx.burst(cx, cy, ch.def.accent, 30, 170);
-      this.ring(cx, cy, ch.def.accent);
-      CF.audio.play(CF.cues.echo, { gain: 0.7 });
+      this.beginTask(altar);
+      return;
+    }
+
+    if (this.time < this.echoCooldownUntil) return;
+    this.echoCooldownUntil = this.mode === 'coop'
+      ? this.time + ch.def.abilityCooldown
+      : this.time + 4;
+    if (this.online && !this.isHost) {
+      this.online.send({ t: 'action', kind: 'echo' });
+      this.fx.burst(cx, cy, ch.def.accent, 26, 160);
       CF.app.toast(t('msg.echo'), 'ok');
       return;
     }
-
-    if (ability === 'echo') {
-      var altar = this.nearDevice(ch, ['altar'], 92);
-      if (altar && altar.char === 'p1') {
-        this.beginTask(altar);
-        return;
-      }
-      if (this.time < this.echoCooldownUntil) return;
-      this.echoCooldownUntil = this.time + ch.def.abilityCooldown;
-      if (this.online && !this.isHost) {
-        this.online.send({ t: 'action', kind: 'echo' });
-        this.fx.burst(cx, cy, ch.def.accent, 26, 160);
-        CF.app.toast(t('msg.echo'), 'ok');
-        return;
-      }
-      if (this.online && this.isHost) this.online.send({ t: 'echoState', until: this.time + 10 });
-      this.echoUntil = this.time + ch.def.abilityDuration;
-      this.fx.burst(cx, cy, ch.def.accent, 30, 170);
-      this.ring(cx, cy, ch.def.accent);
-      CF.audio.play(CF.cues.echo, { gain: 0.7 });
-      CF.app.toast(t('msg.echo'), 'ok');
-      return;
-    }
-
-    if (ability === 'resonance') {
-      var altar2 = this.nearDevice(ch, ['altar'], 92);
-      if (altar2 && altar2.char === 'p2') {
-        this.beginTask(altar2);
-        return;
-      }
-      var dev = this.nearDevice(ch, ['harmonic'], 92);
-      if (dev) {
-        this.beginTask(dev);
-        return;
-      }
-      this.fx.burst(cx, cy, ch.def.accent, 12, 90);
-      this.ring(cx, cy, ch.def.accent);
-      CF.app.toast(t('hint.harmonicShort'), 'info');
-      return;
-    }
-
-    if (ability === 'glyph') {
-      var altar3 = this.nearDevice(ch, ['altar'], 92);
-      if (altar3 && altar3.char === 'p3') {
-        this.beginTask(altar3);
-        return;
-      }
-      var dev2 = this.nearDevice(ch, ['glyph'], 92);
-      if (dev2) {
-        this.beginTask(dev2);
-        return;
-      }
-      if (this.online && !this.isHost) {
-        this.online.send({ t: 'action', kind: 'marker', x: cx, y: cy - 10, char: ch.id });
-      }
-      this.addMarker(cx, cy - 8, ch.id);
-      this.fx.burst(cx, cy, ch.def.accent, 12, 60);
-      CF.app.toast(t('msg.glyphMark'), 'ok');
-    }
+    if (this.online && this.isHost) this.online.send({ t: 'echoState', until: this.time + (this.mode === 'coop' ? ch.def.abilityDuration : 10) });
+    this.echoUntil = this.time + (this.mode === 'coop' ? ch.def.abilityDuration : 10);
+    this.fx.burst(cx, cy, ch.def.accent, 30, 170);
+    this.ring(cx, cy, ch.def.accent);
+    CF.audio.play(CF.cues.echo, { gain: 0.7 });
+    CF.app.toast(t('msg.echo'), 'ok');
   };
 
   Game.prototype.ring = function (x, y, color) {
@@ -651,15 +689,48 @@
     this.activateDevice(dev.id);
   };
 
-  Game.prototype.activateDevice = function (id) {
+  Game.prototype.activateDevice = function (id, opts) {
+    opts = opts || {};
     var dev = null;
     for (var i = 0; i < this.level.devices.length; i++) {
       if (this.level.devices[i].id === id) { dev = this.level.devices[i]; break; }
     }
     if (!dev || this.devices[id]) return;
+    if (dev.type === 'link') {
+      var l = this.links[dev.pair];
+      if (!l) return;
+      if (dev.role === 'vision') {
+        l.vision = this.time + 60;
+        l.by = opts.byChar || this.activeChar || '_local';
+        l.byClient = (opts.byClient !== undefined ? opts.byClient : (this.online && this.online.myId) || '_local');
+        this.devices[id] = true;
+        CF.app.toast(t('msg.linkVision'), 'ok');
+        CF.audio.play(CF.cues.door, { gain: 0.6 });
+        this.fx.burst(dev.x, dev.y - 26, '#52f0e6', 22, 120);
+        this.ring(dev.x, dev.y - 20, '#52f0e6');
+        if (this.online && this.isHost) this.online.markDirty();
+        return;
+      }
+      if (!this.linkReady(dev, this.chars[opts.byChar || this.activeChar])) return;
+      l.solved = true;
+      this.devices[id] = true;
+      for (var j = 0; j < this.level.doors.length; j++) {
+        if (this.level.doors[j].type === 'link' && this.level.doors[j].pair === dev.pair) {
+          this.doors[this.level.doors[j].id] = true;
+        }
+      }
+      CF.app.toast(t('msg.linkSolved'), 'ok');
+      CF.audio.play(CF.cues.door, { gain: 0.7 });
+      this.fx.burst(dev.x, dev.y - 26, '#57ffa8', 26, 140);
+      this.ring(dev.x, dev.y - 20, '#57ffa8');
+      this.shake = 3;
+      if (this.online && this.isHost) this.online.markDirty();
+      return;
+    }
     this.devices[id] = true;
     if (dev.type === 'altar') {
       this.altars[id] = true;
+      this.altarBy[id] = { cid: opts.byChar || this.activeChar || '_local', client: opts.byClient !== undefined ? opts.byClient : (this.online && this.online.myId) || '_local' };
       CF.app.toast(t('msg.altar') + ' · ' + (dev.char || '').toUpperCase(), 'ok');
       if (!this.sealDeadline && this.level.sealWindow) {
         this.sealDeadline = this.time + this.difficulty.sealWindow;
@@ -688,12 +759,17 @@
   };
 
   Game.prototype.checkAltars = function () {
-    var all = true;
+    var active = [];
+    var actors = {};
     for (var i = 0; i < this.level.devices.length; i++) {
       var d = this.level.devices[i];
-      if (d.type === 'altar' && !this.devices[d.id]) all = false;
+      if (d.type !== 'altar' || !this.devices[d.id]) continue;
+      active.push(d.id);
+      var aby = this.altarBy[d.id] || {};
+      actors[(aby.client && aby.client !== '_local') ? 'c:' + aby.client : 'p:' + (aby.cid || d.id)] = true;
     }
-    if (all && !this.victoryAt) {
+    var distinct = Object.keys(actors).length;
+    if (active.length >= 2 && distinct >= 2 && !this.victoryAt) {
       this.sealDeadline = 0;
       this.victoryAt = this.time + 4.6;
       CF.app.toast(t('msg.seal'), 'ok');
@@ -714,6 +790,7 @@
           if (this.devices[d.id]) any = true;
           this.devices[d.id] = false;
           this.altars[d.id] = false;
+          this.altarBy[d.id] = null;
         }
       }
       if (any) {
@@ -744,6 +821,10 @@
           CF.audio.play(CF.cues.door, { gain: 0.7 });
           this.fx.burst(d.x + d.w / 2, d.y + d.h / 2, '#57ffa8', 24, 120);
         }
+      }
+      if (d.type === 'link') {
+        var l = this.links[d.pair];
+        if (l && l.solved && !this.doors[d.id]) this.doors[d.id] = true;
       }
     }
     for (i = 0; i < this.level.devices.length; i++) {
@@ -1048,6 +1129,7 @@
       var dev = level.devices[i];
       E.drawDevice(ctx, dev, !!this.devices[dev.id], this.time, level.era);
     }
+    if (quality !== 'low') this.drawPuzzleBeacons(ctx, camX);
     for (i = 0; i < level.doors.length; i++) {
       var door = level.doors[i];
       E.drawDoor(ctx, door, this.doorAnim[door.id] || 0, this.time, level.era);
@@ -1065,9 +1147,10 @@
 
     if (!level.isFinal) {
       var active = this.allShards();
-      CF.portal.drawWorld(ctx, level.exit.x, level.exit.y - 42, 104, active ? '#57ffa8' : '#3fa9ff', this.time, active);
+      CF.portal.drawWorld(ctx, level.exit.x, level.exit.y, 92, active ? '#57ffa8' : '#3fa9ff', this.time, active);
       ctx.save();
-      E.txt(ctx, active ? t('msg.portalOpen') : t('hint.exit'), level.exit.x, level.exit.y + 18, 8.5, active ? '#57ffa8' : '#8ea2c7', 'center');
+      var hintX = Math.min(level.exit.x, camX + E.W - 108);
+      E.txt(ctx, active ? t('msg.portalOpen') : t('hint.exit'), hintX, level.exit.y + 22, 8.5, active ? '#57ffa8' : '#8ea2c7', 'right');
       ctx.restore();
     }
 
@@ -1233,17 +1316,23 @@
     var quality = CF.store.settings.quality;
     var pad = 12;
     var i;
-    E.panel(ctx, pad, pad, 286, 50, 0.62);
-    E.txt(ctx, t('hud.era') + ' �� ' + t(level.nameKey), pad + 12, pad + 18, 8.5, '#a9bbd8');
-    E.txt(ctx, t(level.whenKey), pad + 12, pad + 39, 11, '#e9f2ff');
-
-    var iconsX = 198;
-    if (level.isFinal) {
-      E.txt(ctx, t('hud.seal'), pad + 12, pad + 63, 8, '#8ea2c7');
-    } else {
-      for (i = 0; i < level.shards.length; i++) {
-        var got = !!this.shards[level.shards[i].id];
-        this.drawHudGem(ctx, iconsX + i * 25, pad + 27, got);
+    var active = this.chars[this.activeChar];
+    if (active) {
+      E.panel(ctx, pad, pad, 302, 76, 0.66);
+      E.drawCharacter(ctx, active.def, pad + 28, pad + 62, 1, 0, { height: 46, time: this.time });
+      E.txt(ctx, t(active.def.nameKey), pad + 54, pad + 20, 9.5, active.def.accent);
+      E.txt(ctx, this.mode === 'solo' ? t('hud.soloAbility') : t(active.def.abilityKey), pad + 54, pad + 36, 8.5, '#e9f2ff');
+      var cd = this.abilityCooldown(active);
+      var txt = cd > 0 ? t('hud.cooldown') + ' ' + cd.toFixed(1) + 's' : t('hud.ready');
+      E.txt(ctx, txt, pad + 54, pad + 51, 8, cd > 0 ? '#ffbf5e' : '#57ffa8');
+      if (this.time < this.echoUntil) {
+        E.txt(ctx, 'ECO ' + Math.ceil(this.echoUntil - this.time) + 's', pad + 200, pad + 20, 7.5, '#52f0e6');
+      }
+      if (this.mode === 'coop') {
+        E.txt(ctx, t('hud.coopTips'), pad + 54, pad + 65, 7, '#8ea2c7');
+      }
+      if (this.mode === 'online') {
+        E.txt(ctx, t('hud.locked') + ' · ' + this.startChar.toUpperCase(), pad + 54, pad + 65, 7, '#57ffa8');
       }
     }
 
@@ -1265,32 +1354,16 @@
     for (var x = 0; x < 10; x++) ctx.fillRect(E.W - 224 - pad + 12 + x * 20, pad + 30, 1, 6);
     ctx.restore();
 
-    if (this.mode !== 'coop') {
-      var active = this.chars[this.activeChar];
-      if (active) {
-        E.panel(ctx, pad, E.H - 84, 300, 72, 0.66);
-        E.drawCharacter(ctx, active.def, pad + 28, E.H - 20, 1, 0, { height: 42, time: this.time });
-        E.txt(ctx, t(active.def.nameKey), pad + 54, E.H - 56, 9.5, active.def.accent);
-        E.txt(ctx, this.mode === 'solo' ? t('hud.soloAbility') : t(active.def.abilityKey), pad + 54, E.H - 40, 8.5, '#e9f2ff');
-        var cd = this.abilityCooldown(active);
-        var txt = cd > 0 ? t('hud.cooldown') + ' ' + cd.toFixed(1) + 's' : t('hud.ready');
-        E.txt(ctx, txt, pad + 54, E.H - 25, 8, cd > 0 ? '#ffbf5e' : '#57ffa8');
-        if (this.time < this.echoUntil) {
-          E.txt(ctx, 'ECO ' + Math.ceil(this.echoUntil - this.time) + 's', pad + 200, E.H - 56, 7.5, '#52f0e6');
-        }
-      }
-      if (this.mode === 'online') {
-        E.txt(ctx, t('hud.locked') + ' �� ' + this.startChar.toUpperCase(), E.W - pad - 12, E.H - 20, 7.5, '#57ffa8', 'right');
-      }
+    E.panel(ctx, pad, E.H - 62, 300, 50, 0.62);
+    var modeKey = this.mode === 'coop' ? 'hud.coop' : this.mode === 'online' ? 'hud.online' : 'hud.solo';
+    E.txt(ctx, t(level.whenKey) + ' · ' + t(modeKey) + ' · ' + t(this.difficulty.key), pad + 12, E.H - 46, 7.5, '#a9bbd8');
+    if (level.isFinal) {
+      E.txt(ctx, t('hud.seal'), pad + 12, E.H - 27, 8, '#8ea2c7');
     } else {
-      E.panel(ctx, pad, E.H - 88, 420, 76, 0.62);
-      for (i = 0; i < 3; i++) {
-        var cc = this.chars['p' + (i + 1)];
-        var ox = pad + 30 + i * 132;
-        E.drawCharacter(ctx, cc.def, ox, E.H - 22, 1, 0, { height: 40, time: this.time });
-        E.txt(ctx, cc.def.slot, ox + 18, E.H - 57, 8, cc.def.accent);
-        E.txt(ctx, t(cc.def.abilityKey), ox + 18, E.H - 42, 7.5, '#8ea2c7');
-        E.txt(ctx, COOP_CONTROLS[cc.id].ability.replace('Key', ''), ox + 18, E.H - 27, 7.5, '#e9f2ff');
+      var iconsX = pad + 12;
+      for (i = 0; i < level.shards.length; i++) {
+        var got = !!this.shards[level.shards[i].id];
+        this.drawHudGem(ctx, iconsX + i * 25, E.H - 27, got);
       }
     }
 
@@ -1379,27 +1452,31 @@
     if (this.allShards()) return t('hint.exitOpen');
     var ch = this.chars[this.activeChar];
     var x = ch ? ch.x : 0;
+    var lp = this.levelIndex === 0 ? 'L1' : 'L2';
+    var l = this.links[lp] || {};
     var hint;
-    if (x < 1700) hint = 'echo';
-    else if (x < 1950) hint = 'plates';
-    else if (x < 2200) hint = 'glyph';
-    else hint = 'harmonic';
-    if (this.mode === 'solo') {
-      if (this.difficulty.hintLevel === 'minimal') {
-        if (hint === 'echo') return t('hint.soloEcho');
-        if (hint === 'plates') return t('hint.soloPlates');
-        if (hint === 'glyph') return t('hint.soloGlyph');
-        return t('hint.soloHarmonic');
-      }
-      if (hint === 'echo') return t('hint.soloEcho');
-      if (hint === 'plates') return t('hint.soloPlates');
-      if (hint === 'glyph') return t('hint.soloGlyph');
-      return t('hint.soloHarmonic');
+    if (this.levelIndex === 0) {
+      if (x < 1300) hint = 'echo';
+      else if (x < 1760) hint = l.vision && this.time <= l.vision ? 'linkVision' : 'linkAction';
+      else if (x < 2430) hint = 'glyph';
+      else hint = 'harmonic';
+    } else {
+      if (x < 1110) hint = 'echo';
+      else if (x < 1450) hint = l.vision && this.time <= l.vision ? 'linkVision' : 'linkAction';
+      else if (x < 2150) hint = 'glyph';
+      else hint = 'harmonic';
     }
+    if (this.mode === 'solo') {
+      if (hint === 'linkAction' || hint === 'linkVision') return t('hint.soloLink');
+      return t('hint.solo' + hint.charAt(0).toUpperCase() + hint.slice(1));
+    }
+    if (hint === 'linkAction') return t('hint.linkAction');
+    if (hint === 'linkVision') return t('hint.linkVision');
     hint = 'hint.' + hint;
     if (this.difficulty.hintLevel === 'minimal') {
       if (hint === 'hint.echo') return t('hint.hidden');
-      if (hint === 'hint.plates') return t('hint.platesShort');
+      if (hint === 'hint.linkAction') return t('hint.linkActionShort');
+      if (hint === 'hint.linkVision') return t('hint.linkVisionShort');
       if (hint === 'hint.glyph') return t('hint.glyphShort');
       return t('hint.harmonicShort');
     }
@@ -1407,6 +1484,37 @@
       return t('hint.onlineFew');
     }
     return t(hint);
+  };
+
+  Game.prototype.drawPuzzleBeacons = function (ctx, camX) {
+    var time = this.time;
+    for (var i = 0; i < this.level.devices.length; i++) {
+      var dev = this.level.devices[i];
+      if (this.devices[dev.id]) continue;
+      if (dev.x + 40 < camX || dev.x - 40 > camX + E.W) continue;
+      var isLink = dev.type === 'link';
+      if (!isLink && dev.type !== 'harmonic' && dev.type !== 'glyph') continue;
+      var v = isLink ? (dev.role === 'vision' ? '#7ef7ff' : '#57ffa8') : dev.type === 'harmonic' ? '#ffbf5e' : '#b98bff';
+      var pulse = 0.45 + 0.3 * Math.sin(time * 2.4 + dev.x * 0.02);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      var grad = ctx.createLinearGradient(0, dev.y - 190, 0, dev.y);
+      var rgb = [parseInt(v.slice(1, 3), 16), parseInt(v.slice(3, 5), 16), parseInt(v.slice(5, 7), 16)];
+      grad.addColorStop(0, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0)');
+      grad.addColorStop(1, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0.3)');
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = grad;
+      ctx.fillRect(dev.x - 9, dev.y - 190, 18, 190);
+      ctx.globalAlpha = pulse * 0.6;
+      ctx.strokeStyle = v;
+      ctx.lineWidth = 1;
+      var sweep = dev.y - 190 + ((time * 42) % 190);
+      ctx.beginPath();
+      ctx.moveTo(dev.x - 8, sweep);
+      ctx.lineTo(dev.x + 8, sweep + 7);
+      ctx.stroke();
+      ctx.restore();
+    }
   };
 
   Game.prototype.drawCollapse = function (ctx) {
@@ -1472,6 +1580,7 @@
       echoUntil: Math.max(0, this.echoUntil - this.time),
       sealDeadline: this.sealDeadline ? Math.max(0, this.sealDeadline - this.time) : 0,
       collapseUntil: this.collapseUntil > this.time ? (this.collapseUntil - this.time) : 0,
+      links: Object.assign({}, this.links),
       markers: this.markers.map(function (m) {
         return { x: m.x, y: m.y, char: m.char, until: Math.max(0, m.until - this.time) };
       }),
@@ -1521,6 +1630,9 @@
       }
       this.markers = nextMarkers;
     }
+    if (w.links) {
+      this.links = Object.assign({}, this.links, w.links);
+    }
     if (w.completed && !this.completed) {
       this.completed = true;
     }
@@ -1553,7 +1665,7 @@
       if (!dev) return;
       var ch = this.chars[dev.char || action.char];
       if (dev.type === 'plate') return;
-      this.activateDevice(action.id);
+      this.activateDevice(action.id, { byChar: action.char || dev.char, byClient: action.pid });
       if (this.online.markDirty) this.online.markDirty();
       void ch;
     } else if (action.kind === 'shard') {

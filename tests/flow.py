@@ -52,7 +52,10 @@ with sync_playwright() as p:
     print("FINAL", page.evaluate("() => [CF.game.levelIndex, CF.game.level.isFinal, CF.app.state.screen]"))
     page.evaluate("""() => {
       const g = CF.game;
-      for (const d of g.level.devices) if (d.type === 'altar') g.activateDevice(d.id);
+      const altars = g.level.devices.filter(d => d.type === 'altar');
+      g.activeChar = 'p1'; g.activateDevice(altars[0].id);
+      g.chars.p2.owner = 'local';
+      g.activeChar = 'p2'; g.activateDevice(altars[1].id);
     }""")
     page.wait_for_timeout(5100)
     print("VICTORY", page.evaluate("() => [CF.app.state.screen, CF.game.victoryFired, CF.app.state.victoryShown]"))

@@ -41,9 +41,15 @@ with sync_playwright() as p:
     gp = gctx.new_page(); gp.on("pageerror", lambda e: errors.append("GUEST " + str(e)))
     menu_online(gp, "p2")
     gp.click('[data-action="goto-join-list"]')
-    gp.wait_for_timeout(2600)
-    rooms = gp.evaluate("() => Array.from(document.querySelectorAll('.room')).map(r => ({code: r.getAttribute('data-code'), text: r.innerText}))")
-    print("ROOMS", rooms)
+    rooms = []
+    for attempt in range(12):
+        gp.wait_for_timeout(2600)
+        rooms = gp.evaluate("() => Array.from(document.querySelectorAll('.room')).map(r => ({code: r.getAttribute('data-code'), text: r.innerText}))")
+        print("ROOMS try", attempt, rooms, gp.evaluate("() => [CF.app.state.screen, CF.app.state.rooms.length, CF.app.state.roomsLoading]"))
+        if any(r["code"] == CODE for r in rooms):
+            break
+        if gp.locator('[data-action="refresh-rooms"]').count():
+            gp.click('[data-action="refresh-rooms"]')
     print("STATE", gp.evaluate("() => [CF.app.state.screen, CF.app.state.rooms.length, CF.app.state.roomsLoading]"))
     gp.screenshot(path=str(SHOTS / "l01-list.png"))
     assert any(r["code"] == CODE for r in rooms), "room not listed"
@@ -51,10 +57,15 @@ with sync_playwright() as p:
     gp.wait_for_timeout(200)
     gp.screenshot(path=str(SHOTS / "l02-list-selected.png"))
     gp.click('[data-action="join-selected"]')
-    gp.wait_for_timeout(3500)
+    lobby = False
+    for _ in range(14):
+        gp.wait_for_timeout(1000)
+        if gp.evaluate("() => CF.app.state.screen") == "lobby":
+            lobby = True
+            break
     print("GUEST LOBBY", gp.evaluate("() => [CF.app.state.screen, CF.online.code, CF.online.room && CF.online.room.players.length]"))
+    assert lobby, "guest never reached lobby"
     print("HOST PLAYERS", hp.evaluate("() => [CF.online.players.length, CF.online.room && CF.online.room.status]"))
-    assert gp.evaluate("() => CF.app.state.screen") == "lobby"
     gp.screenshot(path=str(SHOTS / "l03-list-joined.png"))
     hp.evaluate("() => CF.online.leaveRoom(true)")
     gp.wait_for_timeout(1800)

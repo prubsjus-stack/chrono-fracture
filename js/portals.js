@@ -382,20 +382,112 @@
 
   function drawWorldPortal(ctx, x, y, size, color, t, active) {
     var rgb = hexToRgb(color);
+    var cx = x;
+    var ry = size * 0.86;
+    var cy = y - ry * 0.8;
+    var rx = size * 0.5;
+    var floor = y + 2;
     ctx.save();
-    ctx.translate(x, y);
-    if (!active) {
-      ctx.globalAlpha = 0.35;
+    ctx.globalAlpha = active ? 1 : 0.4;
+
+    // stone pillars rooted on the ground so the gate never floats
+    var pillarW = 14;
+    ctx.fillStyle = '#2a2620';
+    ctx.fillRect(cx - rx - pillarW * 0.4, cy - ry * 0.1, pillarW * 0.8, floor - (cy - ry * 0.1));
+    ctx.fillRect(cx + rx - pillarW * 0.4, cy - ry * 0.1, pillarW * 0.8, floor - (cy - ry * 0.1));
+    ctx.fillStyle = 'rgba(255,255,255,.12)';
+    ctx.fillRect(cx - rx - pillarW * 0.4, cy - ry * 0.1, 2, floor - (cy - ry * 0.1));
+    ctx.fillRect(cx + rx - pillarW * 0.4, cy - ry * 0.1, 2, floor - (cy - ry * 0.1));
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath();
+    ctx.ellipse(cx, floor, rx + 22, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.translate(cx, cy);
+    ctx.scale(1, ry / rx);
+
+    // soft community glow (translucent, keeps the level art visible behind)
+    var glow = ctx.createRadialGradient(0, 0, rx * 0.2, 0, 0, rx * 2.1);
+    glow.addColorStop(0, rgba(rgb, 0.35));
+    glow.addColorStop(0.5, rgba(rgb, 0.13));
+    glow.addColorStop(1, rgba(rgb, 0));
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, rx * 2.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    // rotating rune rings, The Past Within style
+    ctx.globalCompositeOperation = 'lighter';
+    var rings = [
+      { r: 1.0, w: 2.4, speed: 0.5, dash: [8, 6], alpha: 0.9 },
+      { r: 0.8, w: 1.6, speed: -0.8, dash: [4, 7], alpha: 0.7 },
+      { r: 0.6, w: 3, speed: 1.2, dash: [12, 5], alpha: 0.8 },
+      { r: 0.38, w: 1.4, speed: -1.9, dash: [3, 4], alpha: 0.95 }
+    ];
+    for (var i = 0; i < rings.length; i++) {
+      var rg = rings[i];
+      ctx.save();
+      ctx.rotate(t * rg.speed + i * 1.35);
+      ctx.strokeStyle = rgba(rgb, rg.alpha);
+      ctx.lineWidth = rg.w;
+      ctx.setLineDash(rg.dash);
+      ctx.beginPath();
+      ctx.arc(0, 0, rx * rg.r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
     }
-    draw(ctx, size, {
-      color: color,
-      rgb: rgb,
-      t: t,
-      hover: active,
-      press: 0,
-      intensity: active ? 1.15 : 0.55,
-      opening: active ? 1 : 0.7
-    });
+    ctx.setLineDash([]);
+
+    // orbiting sparks
+    for (var p = 0; p < 22; p++) {
+      var seed = p * 2.399963;
+      var orbit = rx * (0.34 + 0.6 * ((p * 37) % 100) / 100);
+      var ang = seed + t * (0.6 + (p % 5) * 0.18) * (p % 2 ? 1 : -1);
+      var px = Math.cos(ang) * orbit;
+      var py = Math.sin(ang) * orbit;
+      var ps = p % 4 === 0 ? 2.4 : 1.5;
+      ctx.fillStyle = rgba(rgb, 0.4 + 0.5 * ((p * 17) % 10) / 10);
+      ctx.fillRect(Math.round(px) - ps / 2, Math.round(py) - ps / 2, ps, ps);
+    }
+
+    // bright core horizon
+    var core = ctx.createRadialGradient(0, 0, 0, 0, 0, rx * 0.6);
+    core.addColorStop(0, 'rgba(255,255,255,' + (active ? 0.9 : 0.4) + ')');
+    core.addColorStop(0.2, rgba(rgb, active ? 0.85 : 0.4));
+    core.addColorStop(0.6, rgba(rgb, 0.2));
+    core.addColorStop(1, rgba(rgb, 0));
+    ctx.fillStyle = core;
+    ctx.beginPath();
+    ctx.arc(0, 0, rx * 0.62, 0, Math.PI * 2);
+    ctx.fill();
+
+    // tick crown
+    ctx.globalCompositeOperation = 'source-over';
+    var ticks = 18;
+    for (var k = 0; k < ticks; k++) {
+      var ta = (k / ticks) * Math.PI * 2 + t * 0.16;
+      var tr = rx * 1.06;
+      var on = (k + Math.floor(t * 2.8)) % 4 === 0;
+      ctx.fillStyle = on ? rgba(rgb, 0.95) : rgba(rgb, 0.28);
+      ctx.fillRect(Math.cos(ta) * tr - 1, Math.sin(ta) * tr - 1, on ? 3 : 2, on ? 3 : 2);
+    }
+
+    // outer stone arch (drawn unscaled so it stays crisp)
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.translate(cx, cy);
+    ctx.save();
+    ctx.scale(1, ry / rx);
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = 'rgba(20,24,32,.9)';
+    ctx.beginPath();
+    ctx.arc(0, 0, rx * 1.02, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = rgba(rgb, 0.75);
+    ctx.beginPath();
+    ctx.arc(0, 0, rx * 1.1, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
     ctx.restore();
   }
 
