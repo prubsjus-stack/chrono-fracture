@@ -1147,7 +1147,7 @@
 
     if (!level.isFinal) {
       var active = this.allShards();
-      CF.portal.drawWorld(ctx, level.exit.x, level.exit.y, 92, active ? '#57ffa8' : '#3fa9ff', this.time, active);
+      CF.portal.drawWorld(ctx, level.exit.x, level.exit.y, 104, active ? '#57ffa8' : '#3fa9ff', this.time, active);
       ctx.save();
       var hintX = Math.min(level.exit.x, camX + E.W - 108);
       E.txt(ctx, active ? t('msg.portalOpen') : t('hint.exit'), hintX, level.exit.y + 22, 8.5, active ? '#57ffa8' : '#8ea2c7', 'right');

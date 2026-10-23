@@ -3,7 +3,7 @@
 
   var CF = window.CF = window.CF || {};
 
-  CF.VERSION = '1.0.0';
+  CF.VERSION = '1.1.0';
   CF.TITLE = 'BROKEN FREQUENCY';
 
   CF.characters = [

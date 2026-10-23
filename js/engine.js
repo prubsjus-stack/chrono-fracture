@@ -457,6 +457,28 @@
     ctx.fillStyle = shadeHex(edge, -0.25);
     ctx.fillRect(x, y + 4, w, 1);
 
+    if (quality !== 'low' && !hidden && (p.kind === 'ledge' || p.kind === 'core')) {
+      for (var cb = 0; cb < 2; cb++) {
+        var cbx = cb ? x + w - 19 : x + 8;
+        ctx.fillStyle = 'rgba(0,0,0,.3)';
+        ctx.beginPath();
+        ctx.moveTo(cbx + 3, y + h + 3);
+        ctx.lineTo(cbx + 12, y + h + 3);
+        ctx.lineTo(cbx + 2, y + h + 13);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = shadeHex(dark, -0.1);
+        ctx.beginPath();
+        ctx.moveTo(cbx, y + h - 1);
+        ctx.lineTo(cbx + 10, y + h - 1);
+        ctx.lineTo(cbx, y + h + 10);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = shadeHex(body, 0.08);
+        ctx.fillRect(cbx, y + h - 1, 9, 1);
+      }
+    }
+
     if (quality !== 'low') {
       if (era === 'prehistoria') {
         for (var m = 0; m < Math.floor(w / 17); m++) {

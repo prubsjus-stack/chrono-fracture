@@ -382,112 +382,218 @@
 
   function drawWorldPortal(ctx, x, y, size, color, t, active) {
     var rgb = hexToRgb(color);
+    var W = size;
+    var H = size * 1.52;
+    var baseY = y - 2;
     var cx = x;
-    var ry = size * 0.86;
-    var cy = y - ry * 0.8;
-    var rx = size * 0.5;
-    var floor = y + 2;
+    var pw = Math.max(10, Math.round(W * 0.13));
+    var half = W * 0.5;
+    var openW = half - pw * 0.55;
+    var springY = baseY - H * 0.56;
+    var topY = springY - openW;
+
+    function archPath(c, cxp, by, sy, ow) {
+      c.beginPath();
+      c.moveTo(cxp - ow, by);
+      c.lineTo(cxp - ow, sy);
+      c.arc(cxp, sy, ow, Math.PI, 0, false);
+      c.lineTo(cxp + ow, by);
+      c.closePath();
+    }
+
     ctx.save();
-    ctx.globalAlpha = active ? 1 : 0.4;
+    ctx.globalAlpha = active ? 1 : 0.85;
 
-    // stone pillars rooted on the ground so the gate never floats
-    var pillarW = 14;
-    ctx.fillStyle = '#2a2620';
-    ctx.fillRect(cx - rx - pillarW * 0.4, cy - ry * 0.1, pillarW * 0.8, floor - (cy - ry * 0.1));
-    ctx.fillRect(cx + rx - pillarW * 0.4, cy - ry * 0.1, pillarW * 0.8, floor - (cy - ry * 0.1));
-    ctx.fillStyle = 'rgba(255,255,255,.12)';
-    ctx.fillRect(cx - rx - pillarW * 0.4, cy - ry * 0.1, 2, floor - (cy - ry * 0.1));
-    ctx.fillRect(cx + rx - pillarW * 0.4, cy - ry * 0.1, 2, floor - (cy - ry * 0.1));
-    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    // ground shadow + warm pool of light
+    ctx.fillStyle = 'rgba(0,0,0,.36)';
     ctx.beginPath();
-    ctx.ellipse(cx, floor, rx + 22, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, baseY + 3, half * 1.08, 7, 0, 0, Math.PI * 2);
     ctx.fill();
-
-    ctx.translate(cx, cy);
-    ctx.scale(1, ry / rx);
-
-    // soft community glow (translucent, keeps the level art visible behind)
-    var glow = ctx.createRadialGradient(0, 0, rx * 0.2, 0, 0, rx * 2.1);
-    glow.addColorStop(0, rgba(rgb, 0.35));
-    glow.addColorStop(0.5, rgba(rgb, 0.13));
-    glow.addColorStop(1, rgba(rgb, 0));
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(0, 0, rx * 2.1, 0, Math.PI * 2);
-    ctx.fill();
-
-    // rotating rune rings, The Past Within style
+    ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    var rings = [
-      { r: 1.0, w: 2.4, speed: 0.5, dash: [8, 6], alpha: 0.9 },
-      { r: 0.8, w: 1.6, speed: -0.8, dash: [4, 7], alpha: 0.7 },
-      { r: 0.6, w: 3, speed: 1.2, dash: [12, 5], alpha: 0.8 },
-      { r: 0.38, w: 1.4, speed: -1.9, dash: [3, 4], alpha: 0.95 }
-    ];
-    for (var i = 0; i < rings.length; i++) {
-      var rg = rings[i];
-      ctx.save();
-      ctx.rotate(t * rg.speed + i * 1.35);
-      ctx.strokeStyle = rgba(rgb, rg.alpha);
-      ctx.lineWidth = rg.w;
-      ctx.setLineDash(rg.dash);
-      ctx.beginPath();
-      ctx.arc(0, 0, rx * rg.r, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
-    ctx.setLineDash([]);
+    var pool = ctx.createRadialGradient(cx, baseY - 2, 2, cx, baseY - 2, half * 1.5);
+    pool.addColorStop(0, rgba(rgb, active ? 0.3 : 0.14));
+    pool.addColorStop(1, rgba(rgb, 0));
+    ctx.fillStyle = pool;
+    ctx.fillRect(cx - half * 1.6, baseY - half, half * 3.2, half * 1.4);
+    ctx.restore();
 
-    // orbiting sparks
-    for (var p = 0; p < 22; p++) {
-      var seed = p * 2.399963;
-      var orbit = rx * (0.34 + 0.6 * ((p * 37) % 100) / 100);
-      var ang = seed + t * (0.6 + (p % 5) * 0.18) * (p % 2 ? 1 : -1);
-      var px = Math.cos(ang) * orbit;
-      var py = Math.sin(ang) * orbit;
-      var ps = p % 4 === 0 ? 2.4 : 1.5;
-      ctx.fillStyle = rgba(rgb, 0.4 + 0.5 * ((p * 17) % 10) / 10);
-      ctx.fillRect(Math.round(px) - ps / 2, Math.round(py) - ps / 2, ps, ps);
-    }
+    // plinth: two stone steps rooted in the platform
+    ctx.fillStyle = '#17130f';
+    ctx.fillRect(cx - half * 1.1, baseY - 8, half * 2.2, 8);
+    ctx.fillStyle = '#3d352c';
+    ctx.fillRect(cx - half * 0.98, baseY - 15, half * 1.96, 8);
+    ctx.fillStyle = 'rgba(255,235,200,.1)';
+    ctx.fillRect(cx - half * 0.98, baseY - 15, half * 1.96, 1);
+    ctx.fillStyle = 'rgba(0,0,0,.28)';
+    ctx.fillRect(cx - half * 0.98, baseY - 8, half * 1.96, 1);
 
-    // bright core horizon
-    var core = ctx.createRadialGradient(0, 0, 0, 0, 0, rx * 0.6);
-    core.addColorStop(0, 'rgba(255,255,255,' + (active ? 0.9 : 0.4) + ')');
-    core.addColorStop(0.2, rgba(rgb, active ? 0.85 : 0.4));
-    core.addColorStop(0.6, rgba(rgb, 0.2));
-    core.addColorStop(1, rgba(rgb, 0));
-    ctx.fillStyle = core;
-    ctx.beginPath();
-    ctx.arc(0, 0, rx * 0.62, 0, Math.PI * 2);
-    ctx.fill();
-
-    // tick crown
-    ctx.globalCompositeOperation = 'source-over';
-    var ticks = 18;
-    for (var k = 0; k < ticks; k++) {
-      var ta = (k / ticks) * Math.PI * 2 + t * 0.16;
-      var tr = rx * 1.06;
-      var on = (k + Math.floor(t * 2.8)) % 4 === 0;
-      ctx.fillStyle = on ? rgba(rgb, 0.95) : rgba(rgb, 0.28);
-      ctx.fillRect(Math.cos(ta) * tr - 1, Math.sin(ta) * tr - 1, on ? 3 : 2, on ? 3 : 2);
-    }
-
-    // outer stone arch (drawn unscaled so it stays crisp)
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.translate(cx, cy);
+    // ---- vortex interior (translucent, the level art shows through) ----
     ctx.save();
-    ctx.scale(1, ry / rx);
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = 'rgba(20,24,32,.9)';
+    archPath(ctx, cx, baseY - 14, springY, openW);
+    ctx.clip();
+
+    var vx = cx;
+    var vy = springY + openW * 0.34;
+    var vg = ctx.createRadialGradient(vx, vy, 2, vx, vy, openW * 1.5);
+    vg.addColorStop(0, 'rgba(255,255,255,' + (active ? 0.55 : 0.26) + ')');
+    vg.addColorStop(0.22, rgba(rgb, active ? 0.5 : 0.24));
+    vg.addColorStop(0.6, rgba(rgb, active ? 0.2 : 0.1));
+    vg.addColorStop(1, rgba(rgb, 0.02));
+    ctx.fillStyle = vg;
+    ctx.fillRect(cx - openW, topY - 4, openW * 2, baseY - topY + 8);
+
+    // rotating swirl arcs
+    ctx.globalCompositeOperation = 'lighter';
+    for (var s = 0; s < 4; s++) {
+      var rr = openW * (0.42 + s * 0.17);
+      var rot = t * (0.32 + s * 0.2) * (s % 2 ? -1 : 1);
+      var a0 = rot + s * 1.4;
+      ctx.strokeStyle = rgba(rgb, 0.16 + (s % 2) * 0.09 + (active ? 0.1 : 0));
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.ellipse(vx, vy, rr, rr * 0.86, 0, a0, a0 + Math.PI * (0.6 + s * 0.18));
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(vx, vy, rr * 0.82, rr * 0.7, 0, a0 + Math.PI, a0 + Math.PI * 1.45);
+      ctx.stroke();
+    }
+
+    // rising motes inside the gate
+    for (var m = 0; m < 16; m++) {
+      var h1 = Math.sin(m * 12.9898) * 43758.5453;
+      var h2 = Math.sin(m * 78.233) * 12543.1234;
+      var mx = vx + ((h1 - Math.floor(h1)) - 0.5) * openW * 1.7;
+      var speed = 16 + (h2 - Math.floor(h2)) * 22;
+      var span = baseY - topY + 20;
+      var my = baseY + 6 - ((t * speed + m * 21) % span);
+      var fade = Math.max(0, Math.min(1, (my - topY) / span));
+      ctx.fillStyle = 'rgba(230,255,255,' + (0.18 + 0.5 * (1 - fade) * (active ? 1 : 0.6)) + ')';
+      ctx.fillRect(Math.round(mx), Math.round(my), m % 3 ? 1 : 2, m % 5 ? 1 : 2);
+    }
+    ctx.restore();
+
+    // ---- stone frame ----
+    var stone = '#5f574c';
+    var stoneL = '#877c6c';
+    var stoneD = '#332c25';
+
+    function pillar(px) {
+      ctx.fillStyle = 'rgba(0,0,0,.3)';
+      ctx.fillRect(px - pw / 2 + 3, baseY - H * 0.74 + 3, pw, H * 0.74 - 10);
+      ctx.fillStyle = stoneD;
+      ctx.fillRect(px - pw / 2, baseY - 16 - H * 0.58, pw, H * 0.58 + 2);
+      ctx.fillStyle = stone;
+      ctx.fillRect(px - pw / 2 + 1, baseY - 16 - H * 0.58, pw - 2, H * 0.58);
+      ctx.fillStyle = stoneL;
+      ctx.fillRect(px - pw / 2 + 1, baseY - 16 - H * 0.58, 2, H * 0.58);
+      ctx.fillStyle = 'rgba(0,0,0,.25)';
+      ctx.fillRect(px + pw / 2 - 3, baseY - 16 - H * 0.58, 2, H * 0.58);
+      // capital + base blocks
+      ctx.fillStyle = stoneL;
+      ctx.fillRect(px - pw / 2 - 2, springY - 2, pw + 4, 5);
+      ctx.fillStyle = stone;
+      ctx.fillRect(px - pw / 2 - 2, baseY - 20, pw + 4, 5);
+      // carved runes glow
+      for (var k = 0; k < 3; k++) {
+        var ry = springY + 8 + k * (H * 0.12);
+        var pulse = 0.35 + 0.3 * Math.sin(t * 2.2 + k * 1.7);
+        ctx.fillStyle = rgba(rgb, active ? 0.7 : pulse * 0.8);
+        ctx.fillRect(px - 1, Math.round(ry), 2, 3);
+        ctx.fillRect(px - 3, Math.round(ry) + 4, 3, 1);
+      }
+    }
+    pillar(cx - openW - pw * 0.42);
+    pillar(cx + openW + pw * 0.42);
+
+    // stone arch ring
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = stoneD;
+    ctx.lineWidth = pw * 1.15;
     ctx.beginPath();
-    ctx.arc(0, 0, rx * 1.02, 0, Math.PI * 2);
+    ctx.arc(cx, springY, openW + pw * 0.42, Math.PI, 0, false);
     ctx.stroke();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = rgba(rgb, 0.75);
+    ctx.strokeStyle = stone;
+    ctx.lineWidth = pw * 0.88;
     ctx.beginPath();
-    ctx.arc(0, 0, rx * 1.1, 0, Math.PI * 2);
+    ctx.arc(cx, springY, openW + pw * 0.42, Math.PI, 0, false);
+    ctx.stroke();
+    ctx.strokeStyle = stoneL;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, springY, openW + pw * 0.42 - pw * 0.34, Math.PI + 0.15, Math.PI * 2 - 0.15, false);
+    ctx.stroke();
+    // keystone
+    ctx.fillStyle = stoneL;
+    ctx.fillRect(cx - 6, springY - openW - pw * 0.5 - 5, 12, 10);
+    ctx.fillStyle = '#1d1915';
+    ctx.fillRect(cx - 2, springY - openW - pw * 0.5 - 1, 4, 4);
+    ctx.fillStyle = rgba(rgb, active ? 0.85 : 0.5);
+    ctx.fillRect(cx - 1, springY - openW - pw * 0.5, 2, 2);
+
+    // accent rim light inside the arch
+    ctx.strokeStyle = rgba(rgb, active ? 0.9 : 0.45);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, springY, openW + 1.5, Math.PI, 0, false);
+    ctx.stroke();
+
+    // floating sigil in the gate
+    var sy2 = vy;
+    ctx.save();
+    ctx.translate(cx, sy2);
+    ctx.rotate(t * (active ? 0.9 : 0.35));
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = rgba(rgb, active ? 0.9 : 0.5);
+    ctx.beginPath();
+    ctx.moveTo(0, -7);
+    ctx.lineTo(5, 0);
+    ctx.lineTo(0, 7);
+    ctx.lineTo(-5, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.65)';
+    ctx.lineWidth = 1;
     ctx.stroke();
     ctx.restore();
+
+    if (!active) {
+      // sealed: cracked sigil line + orbiting lock runes
+      ctx.strokeStyle = rgba(rgb, 0.4);
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(cx - openW * 0.7, springY + openW * 0.55);
+      ctx.lineTo(cx - openW * 0.2, springY + openW * 0.42);
+      ctx.lineTo(cx + openW * 0.15, springY + openW * 0.62);
+      ctx.lineTo(cx + openW * 0.72, springY + openW * 0.48);
+      ctx.stroke();
+      for (var l = 0; l < 3; l++) {
+        var la = t * 0.5 + l * (Math.PI * 2 / 3);
+        var lx = cx + Math.cos(la) * openW * 0.62;
+        var ly = vy + Math.sin(la) * openW * 0.5;
+        ctx.fillStyle = rgba(rgb, 0.5 + 0.25 * Math.sin(t * 3 + l));
+        ctx.fillRect(Math.round(lx) - 2, Math.round(ly) - 2, 4, 1);
+        ctx.fillRect(Math.round(lx) - 1, Math.round(ly) - 1, 2, 3);
+      }
+    } else {
+      // open: light shaft upward
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      var beam = ctx.createLinearGradient(0, topY - 70, 0, baseY);
+      beam.addColorStop(0, rgba(rgb, 0));
+      beam.addColorStop(0.55, rgba(rgb, 0.16));
+      beam.addColorStop(1, rgba(rgb, 0.3));
+      ctx.fillStyle = beam;
+      ctx.beginPath();
+      ctx.moveTo(cx - openW * 0.8, baseY);
+      ctx.lineTo(cx - openW * 1.35, topY - 70);
+      ctx.lineTo(cx + openW * 1.35, topY - 70);
+      ctx.lineTo(cx + openW * 0.8, baseY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
     ctx.restore();
   }
 
