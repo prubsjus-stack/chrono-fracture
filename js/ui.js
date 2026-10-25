@@ -757,7 +757,7 @@
         '<span class="rank">' + (i + 1) + '</span>' +
         '<span class="res-pic"><img src="' + CF.sprite(p.charId) + '" alt="" style="filter:hue-rotate(' + c.hue + 'deg)"></span>' +
         '<span class="res-name"><b>' + esc(p.name) + '</b><i>' + esc(c.name) + (p.id === me.id ? ' · tú' : '') + '</i></span>' +
-        '<span class="res-cell"><b>' + p.cell + '</b>/' + CF.CELLS + '</span>' +
+        '<span class="res-cell"><b>' + p.cell + '</b><span class="of">/' + CF.CELLS + '</span></span>' +
         '<span class="res-pts">' + p.points + ' pts</span>' +
         (win ? '<span class="res-crown">♛</span>' : '') +
         '</div>';

@@ -13,7 +13,7 @@ import threading
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT = 8125
-URL = 'http://127.0.0.1:%d/?v=2.0.0' % PORT
+URL = 'http://127.0.0.1:%d/?v=2.0.1' % PORT
 
 
 class Quiet(http.server.SimpleHTTPRequestHandler):

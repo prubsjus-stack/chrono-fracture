@@ -305,7 +305,8 @@
       hello: function (msg) {
         if (!A.isHost || !A.state) return;
         if (!msg || !msg.pid || msg.pid === A.me.id) return;
-        var before = A.state.players.length;
+        var before = R.get(A.state, msg.pid);
+        var wasConnected = !!(before && before.connected);
         var r = R.addPlayer(A.state, { id: msg.pid, name: msg.name, charId: msg.charId });
         if (!r.ok) {
           CF.Net.sendError(msg.pid, r.error);
@@ -313,7 +314,7 @@
         }
         A.seen[msg.pid] = Date.now();
         if (!r.rejoined) UI.toast(r.player.name + ' se sienta en la mesa.', 'ok');
-        else UI.toast(r.player.name + ' vuelve a la mesa.', 'ok');
+        else if (!wasConnected) UI.toast(r.player.name + ' vuelve a la mesa.', 'ok');
         refreshHost(true);
       },
       presence: function (msg) {

@@ -4,7 +4,7 @@
 
   var CF = window.CF = window.CF || {};
 
-  CF.VERSION = '2.0.0';
+  CF.VERSION = '2.0.1';
   CF.TITLE = 'FRECUENCIA ROTA';
   CF.SUBTITLE = 'un juego de cartas sobre lo que no se puede decir';
 
