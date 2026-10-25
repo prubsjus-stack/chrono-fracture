@@ -1,223 +1,187 @@
+/* FRECUENCIA ROTA · configuración global (v2.0.0) */
 (function () {
   'use strict';
 
   var CF = window.CF = window.CF || {};
 
-  CF.VERSION = '1.2.0';
-  CF.TITLE = 'BROKEN FREQUENCY';
+  CF.VERSION = '2.0.0';
+  CF.TITLE = 'FRECUENCIA ROTA';
+  CF.SUBTITLE = 'un juego de cartas sobre lo que no se puede decir';
 
-  CF.characters = [
-    {
-      id: 'p1',
-      slot: 1,
-      accent: '#52f0e6',
-      accentRgb: '82,240,230',
-      tint: 'rgba(20,200,210,.42)',
-      nameKey: 'char.p1.name',
-      shortKey: 'char.p1.short',
-      roleKey: 'char.p1.role',
-      descKey: 'char.p1.desc',
-      abilityKey: 'char.p1.abilityName',
-      abilityDescKey: 'char.p1.abilityDesc',
-      ability: 'echo',
-      abilityDuration: 10,
-      abilityCooldown: 4,
-      speed: 232,
-      jump: 610,
-      sprite: 'mudo'
-    },
-    {
-      id: 'p2',
-      slot: 2,
-      accent: '#ffbf5e',
-      accentRgb: '255,191,94',
-      tint: 'rgba(255,150,40,.38)',
-      nameKey: 'char.p2.name',
-      shortKey: 'char.p2.short',
-      roleKey: 'char.p2.role',
-      descKey: 'char.p2.desc',
-      abilityKey: 'char.p2.abilityName',
-      abilityDescKey: 'char.p2.abilityDesc',
-      ability: 'resonance',
-      abilityDuration: 1.2,
-      abilityCooldown: 3,
-      speed: 224,
-      jump: 600,
-      sprite: 'mudo'
-    },
-    {
-      id: 'p3',
-      slot: 3,
-      accent: '#b98bff',
-      accentRgb: '185,139,255',
-      tint: null,
-      nameKey: 'char.p3.name',
-      shortKey: 'char.p3.short',
-      roleKey: 'char.p3.role',
-      descKey: 'char.p3.desc',
-      abilityKey: 'char.p3.abilityName',
-      abilityDescKey: 'char.p3.abilityDesc',
-      ability: 'glyph',
-      abilityDuration: 1,
-      abilityCooldown: 2.5,
-      speed: 228,
-      jump: 605,
-      sprite: 'mudo'
-    }
-  ];
+  CF.MIN_PLAYERS = 3;
+  CF.MAX_PLAYERS = 8;
+  CF.CELLS = 30;
+  CF.ROUNDS = 5;
 
-  CF.regions = [
-    { id: 'america', labelKey: 'online.region.america', topic: 'america' },
-    { id: 'europe', labelKey: 'online.region.europe', topic: 'europe' },
-    { id: 'asia', labelKey: 'online.region.asia', topic: 'asia' }
-  ];
+  CF.HAND_CARDS = 6;
+  CF.HAND_WORDS = 5;
+  CF.TABLE_CARDS = 5;
 
-  CF.difficulties = {
-    easy: {
-      id: 'easy',
-      key: 'common.easy',
-      fractureRate: 0.34,
-      hazardDamage: 6,
-      orbSpeed: 0.72,
-      hintLevel: 'full',
-      sealWindow: 34,
-      echoRadius: 360,
-      extraHazards: false
-    },
-    normal: {
-      id: 'normal',
-      key: 'common.normal',
-      fractureRate: 0.62,
-      hazardDamage: 10,
-      orbSpeed: 1,
-      hintLevel: 'context',
-      sealWindow: 27,
-      echoRadius: 315,
-      extraHazards: false
-    },
-    hard: {
-      id: 'hard',
-      key: 'common.hard',
-      fractureRate: 1.02,
-      hazardDamage: 15,
-      orbSpeed: 1.38,
-      hintLevel: 'minimal',
-      sealWindow: 21,
-      echoRadius: 270,
-      extraHazards: true
-    }
+  CF.CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  CF.CODE_LENGTH = 4;
+
+  /* Duraciones en segundos. La ronda se cierra antes si todos han actuado. */
+  CF.TIMERS = {
+    clue: 75,
+    submit: 45,
+    vote: 40,
+    score: 9,
+    trade: 20
+  };
+
+  CF.TIMERS_FAST = {
+    clue: 22,
+    submit: 16,
+    vote: 14,
+    score: 4,
+    trade: 8
+  };
+
+  CF.timers = function () {
+    var fast = false;
+    try {
+      fast = /(^|[?&])fast=1/.test(window.location.search);
+    } catch (e) {}
+    var t = fast ? CF.TIMERS_FAST : CF.TIMERS;
+    return { clue: t.clue, submit: t.submit, vote: t.vote, score: t.score, trade: t.trade };
   };
 
   CF.broker = {
     url: 'wss://broker.hivemq.com:8884/mqtt',
-    namespace: 'chronofracture/v2',
+    namespace: 'brokenfrequency/cards/v2',
     keepalive: 30,
     connectTimeout: 9000,
-    reconnectPeriod: 3500,
-    roomTTL: 55000,
-    presenceTTL: 24000,
-    heartbeat: 5000,
-    positionInterval: 110,
-    publicNote: true
+    reconnectPeriod: 3000,
+    presenceEvery: 4000,
+    hostHeartbeatEvery: 2500,
+    hostSilenceLimit: 14000,
+    dropAfter: 13000
   };
 
-  CF.themes = {
-    prehistoria: {
-      bg: 'assets/img/bg/prehistoria.jpg',
-      platform: '#43362c',
-      platformDark: '#241c18',
-      platformTop: '#8c7347',
-      platformEdge: '#d9a35c',
-      accent: '#ffb066',
-      accent2: '#52f0e6',
-      particle: 'ember',
-      fog: 'rgba(255,150,90,.05)',
-      nameKey: 'era.1.name'
+  /* Los tres personajes canónicos del juego, intactos. */
+  CF.characters = [
+    {
+      id: 'vigia', name: 'VIGÍA', tag: 'P1', role: 'CIENTÍFICA · NO VE',
+      line: 'Percibe el mundo por ecos. En la mesa adivina lo que nadie dice.',
+      accent: '#7ee7ff', frame: 1, hue: 0, eco: false
     },
-    antiguedad: {
-      bg: 'assets/img/bg/antiguedad.jpg',
-      platform: '#4a4357',
-      platformDark: '#26222f',
-      platformTop: '#8f8598',
-      platformEdge: '#d7b98a',
-      accent: '#ffbf5e',
-      accent2: '#52f0e6',
-      particle: 'dust',
-      fog: 'rgba(200,170,255,.05)',
-      nameKey: 'era.2.name'
+    {
+      id: 'sonar', name: 'SÓNAR', tag: 'P2', role: 'CIENTÍFICO · NO OYE',
+      line: 'Todo sonido se vuelve señal. Lee las palabras como vibraciones.',
+      accent: '#ffb066', frame: 2, hue: 0, eco: false
     },
-    nucleo: {
-      bg: null,
-      platform: '#232a4d',
-      platformDark: '#0b0f24',
-      platformTop: '#4c5f9c',
-      platformEdge: '#66e0ff',
-      accent: '#66e0ff',
-      accent2: '#b98bff',
-      particle: 'energy',
-      fog: 'rgba(90,200,255,.05)',
-      nameKey: 'era.3.name'
+    {
+      id: 'glifo', name: 'GLIFO', tag: 'P3', role: 'CIENTÍFICO · NO HABLA',
+      line: 'Se comunica con glifos de luz. Una sola palabra le basta.',
+      accent: '#b98cff', frame: 3, hue: 0, eco: false
+    },
+    {
+      id: 'pulso', name: 'ECO · PULSO', tag: 'P4', role: 'ECO DE SÓNAR',
+      line: 'Marca el compás de la mesa. Escucha con las manos.',
+      accent: '#4fd1c5', frame: 4, hue: 0, eco: true
+    },
+    {
+      id: 'ambar', name: 'ECO · ÁMBAR', tag: 'P5', role: 'ECO DE VIGÍA',
+      line: 'Guarda el calor de las respuestas. Recuerda lo que otros olvidan.',
+      accent: '#ffd166', frame: 5, hue: 0, eco: true
+    },
+    {
+      id: 'jade', name: 'ECO · JADE', tag: 'P6', role: 'ECO DE GLIFO',
+      line: 'Repite en voz baja lo que nadie se atreve a decir.',
+      accent: '#8ee36b', frame: 6, hue: 0, eco: true
+    },
+    {
+      id: 'magenta', name: 'ECO · MAGENTA', tag: 'P7', role: 'ECO SIN ORIGEN',
+      line: 'Colecciona palabras rotas y las devuelve cambiadas.',
+      accent: '#ff7ac8', frame: 4, hue: 300, eco: true
+    },
+    {
+      id: 'zafiro', name: 'ECO · ZAFIRO', tag: 'P8', role: 'ECO TARDÍO',
+      line: 'Llega siempre después del silencio. Su turno es el último.',
+      accent: '#6f8bff', frame: 5, hue: 195, eco: true
+    }
+  ];
+
+  CF.seatColors = ['#7ee7ff', '#ffb066', '#b98cff', '#4fd1c5', '#ffd166', '#8ee36b', '#ff7ac8', '#6f8bff'];
+
+  CF.character = function (id) {
+    for (var i = 0; i < CF.characters.length; i++) {
+      if (CF.characters[i].id === id) return CF.characters[i];
+    }
+    return CF.characters[0];
+  };
+
+  CF.seatColor = function (seat) {
+    return CF.seatColors[((seat | 0) % CF.seatColors.length + CF.seatColors.length) % CF.seatColors.length];
+  };
+
+  CF.sprite = function (charId) {
+    var c = CF.character(charId);
+    var n = ('0' + c.frame).slice(-2);
+    return 'assets/img/char/mudo/frame_' + n + '.png';
+  };
+
+  CF.phaseLabels = {
+    lobby: 'SALA DE ESPERA',
+    clue: 'EL NARRADOR ELIGE',
+    submit: 'ENVÍO SECRETO',
+    vote: 'VOTACIÓN',
+    score: 'RECUENTO',
+    trade: 'TRUEQUE',
+    results: 'RESULTADOS'
+  };
+
+  CF.storageKey = 'fr.v2.profile';
+
+  CF.loadProfile = function () {
+    try {
+      var raw = window.localStorage.getItem(CF.storageKey);
+      if (!raw) return null;
+      var p = JSON.parse(raw);
+      if (!p || typeof p !== 'object') return null;
+      return p;
+    } catch (e) {
+      return null;
     }
   };
 
-  CF.credits = [
-    { titleKey: 'credits.team', names: [
-      'Wilson Alejandro Benitez', 'Aucu Mora Stefanny', 'Gomez Benitez Santiago',
-      'Karol juliana villamil', 'Keitlyn Sofia Bedoya', 'Nicolas Herrran Bedoya',
-      'Paula Daniela Camelo', 'Santiago mejía villalobos', 'Santiago Garcia fajardo',
-      'Jose Daney Arevalo', 'Juan Diego Sierra', 'Nicolas Felipe Quintero',
-      'Laura Lozano Benavides', 'José arturo aguirre', 'Karol Daniela zabala',
-      'Juan Felipe calvo'
-    ], columns: true },
-    { titleKey: 'credits.director', names: ['JUSTIN MENDOZA'], big: true },
-    { titleKey: 'credits.sound', names: ['Justin Mendoza', 'Aucu Mora', 'Nicolas Quintero', 'Laura Lozano', 'Keitlyn Bedoya', 'Paula Daniela'] },
-    { titleKey: 'credits.script', names: ['Santiago Mejia', 'Justin Mendoza', 'Nicolas Quintero'] },
-    { titleKey: 'credits.scripting', names: ['Justin Mendoza'] },
-    { titleKey: 'credits.ui', names: ['Nicolas Quintero', 'Santiago Garcia', 'Santiago Mejia', 'Justin Mendoza'] },
-    { titleKey: 'credits.name', names: ['Santiago Garcia', 'Caro Aucu', 'Juliana Villamil'] },
-    { titleKey: 'credits.levels', names: ['Jose Daney Arevalo', 'Juan Diego Sierra', 'José arturo aguirre', 'Juan Felipe calvo'] },
-    { titleKey: 'credits.art', names: ['Nicolas Herrran Bedoya', 'Karol Daniela zabala', 'Laura Lozano Benavides'] },
-    { titleKey: 'credits.qa', names: ['Juan Felipe calvo', 'Paula Daniela Camelo', 'Keitlyn Sofia Bedoya', 'Nicolas Herrran Bedoya'] },
-    { titleKey: 'credits.production', names: ['Wilson Alejandro Benitez', 'Gomez Benitez Santiago'] },
-    { titleKey: 'credits.localization', names: ['Aucu Mora Stefanny', 'Karol juliana villamil', 'Laura Lozano Benavides'] },
-    { titleKey: 'credits.thanks', names: ['David Merchan', 'Nicolas Quintero', 'Santiago Mejia'] },
-    { titleKey: 'credits.special', names: ['Visual Studio Code', 'OpenCode', 'Replit'] },
-    { titleKey: 'credits.tools', names: ['OpenCode — desarrollo asistido', 'Visual Studio Code', 'Replit', 'GitHub + GitHub Pages', 'MQTT.js + broker público HiveMQ'] },
-    { titleKey: 'credits.engine', names: ['CHRONO ENGINE · HTML5 Canvas 2D / JavaScript', 'Sin dependencias de compilación'] },
-    { titleKey: 'credits.final', final: true }
-  ];
-
-  CF.audioManifestUrl = 'assets/audio/manifest.json';
-
-  CF.cues = {
-    uiHover: 'ui_hover',
-    uiClick: 'ui_click',
-    uiBack: 'ui_back',
-    error: 'ui_error',
-    confirm: 'ui_confirm',
-    portal: 'portal_open',
-    jump: 'player_jump',
-    land: 'player_land',
-    echo: 'ability_echo',
-    resonance: 'ability_resonance',
-    glyph: 'ability_glyph',
-    shard: 'shard',
-    door: 'door_open',
-    checkpoint: 'checkpoint',
-    collapse: 'fracture_collapse',
-    victory: 'victory',
-    musicMenu: 'music_menu',
-    musicEra1: 'music_era1',
-    musicEra2: 'music_era2',
-    musicEra3: 'music_era3'
+  CF.saveProfile = function (p) {
+    try {
+      window.localStorage.setItem(CF.storageKey, JSON.stringify(p));
+    } catch (e) {}
   };
 
-  CF.spriteInfo = {
-    filePattern: 'assets/img/char/mudo/frame_0{n}.png',
-    frames: 6,
-    frameW: 512,
-    frameH: 512,
-    crop: { x: 80, y: 44, w: 356, h: 468 },
-    drawHeight: 49
+  CF.pid = function () {
+    var key = 'fr.v2.pid';
+    try {
+      var v = window.sessionStorage.getItem(key);
+      if (v) return v;
+      var r = 'p' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
+      window.sessionStorage.setItem(key, r);
+      return r;
+    } catch (e) {
+      return 'p' + Math.random().toString(36).slice(2, 10);
+    }
+  };
+
+  CF.code = function () {
+    var out = '';
+    for (var i = 0; i < CF.CODE_LENGTH; i++) {
+      out += CF.CODE_ALPHABET.charAt(Math.floor(Math.random() * CF.CODE_ALPHABET.length));
+    }
+    return out;
+  };
+
+  CF.esc = function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+
+  CF.clamp = function (v, a, b) {
+    return Math.max(a, Math.min(b, v));
   };
 })();

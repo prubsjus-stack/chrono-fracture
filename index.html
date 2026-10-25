@@ -1,44 +1,196 @@
 ﻿<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#05060f">
-<meta name="description" content="Broken Frequency â€” juego pixel art de plataformas y puzles fragmentados en el tiempo.">
-<title>BROKEN FREQUENCY</title>
-<link rel="icon" href="assets/img/icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="css/style.css?v=1.2.0">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>FRECUENCIA ROTA · juego de cartas</title>
+  <meta name="description" content="Un juego de cartas online para 3 a 8 personas sobre lo que no se puede decir. Salas de 4 letras, pistas de una sola palabra y personajes que caminan por un sendero de 30 casillas.">
+  <meta name="theme-color" content="#140f0b">
+  <link rel="icon" href="assets/img/icon.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/fonts/cinzel-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="assets/fonts/local.css">
+  <link rel="stylesheet" href="css/style.css?v=2.0.0">
 </head>
-<body class="is-cover">
-<div id="stage">
-  <canvas id="coverCanvas" aria-hidden="true"></canvas>
-  <canvas id="gameCanvas" width="960" height="540" aria-label="Broken Frequency"></canvas>
-  <div id="fxScanlines" aria-hidden="true"></div>
-  <div id="fxVignette" aria-hidden="true"></div>
-  <div id="overlay" role="main"></div>
-</div>
-<div id="toastLayer" aria-live="polite" aria-atomic="false"></div>
-<div id="boot" class="boot">
-  <div class="boot-inner">
-    <div class="boot-rift" aria-hidden="true"></div>
-    <h1 class="boot-title">BROKEN<br>FREQUENCY</h1>
-    <p class="boot-sub" data-i18n="boot.loading">SINCRONIZANDO LÃNEA TEMPORALâ€¦</p>
-    <div class="boot-bar"><i></i></div>
+<body>
+<div id="app" class="app">
+  <div class="ambient" aria-hidden="true">
+    <div class="ambient-glow"></div>
+    <div class="ambient-grain"></div>
   </div>
+
+  <section id="screen-home" class="screen screen-home">
+    <div class="home-wrap">
+      <header class="brand">
+        <img class="brand-mark" src="assets/img/icon.svg" alt="">
+        <div class="brand-text">
+          <h1 class="brand-title">FRECUENCIA <span>ROTA</span></h1>
+          <p class="brand-sub">un juego de cartas sobre lo que no se puede decir</p>
+        </div>
+      </header>
+
+      <div class="home-panel">
+        <div class="home-col">
+          <label class="field">
+            <span>TU NOMBRE</span>
+            <input id="in-name" maxlength="14" autocomplete="off" spellcheck="false" placeholder="Escribe tu nombre">
+          </label>
+
+          <div class="char-head">
+            <span>ELIGE PERSONAJE</span>
+            <span id="char-hint" class="char-hint"></span>
+          </div>
+          <div id="char-picker" class="char-picker"></div>
+        </div>
+
+        <div class="home-col home-actions">
+          <button id="btn-create" class="btn btn-primary btn-big">Crear mesa</button>
+          <div class="or"><span>o entra con un código de 4 letras</span></div>
+          <div class="join-row">
+            <input id="in-code" class="code-input" maxlength="4" placeholder="ABCD" autocomplete="off" spellcheck="false" aria-label="Código de mesa">
+            <button id="btn-join" class="btn">Entrar</button>
+          </div>
+          <div id="home-msg" class="home-msg"></div>
+          <div class="home-links">
+            <button id="btn-rules" class="link">Cómo se juega</button>
+            <button id="btn-sound" class="link">Sonido: sí</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="home-foot">
+        <span id="net-status" class="net-dot net-idle">sin conexión</span>
+        <span class="home-credit">v2.0 · mesa de 3 a 8 · 30 casillas · 5 rondas</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-lobby" class="screen screen-lobby hidden">
+    <div class="lobby-wrap">
+      <div class="lobby-head">
+        <button id="btn-lobby-back" class="link back-link">← salir</button>
+        <div class="lobby-code">
+          <span class="lobby-code-label">CÓDIGO DE MESA</span>
+          <strong id="lobby-code">····</strong>
+          <button id="btn-copy" class="link">copiar</button>
+        </div>
+        <div id="lobby-status" class="net-dot net-idle">conectando…</div>
+      </div>
+
+      <div class="lobby-main">
+        <div class="lobby-left">
+          <div class="section-head">
+            <h2>LA MESA</h2>
+            <span id="lobby-caption" class="caption"></span>
+          </div>
+          <div id="lobby-players" class="lobby-players"></div>
+          <p class="lobby-note">Comparte el código o abre otra pestaña en este navegador y únete. Cada pestaña es un jugador.</p>
+        </div>
+
+        <div class="lobby-right">
+          <div class="lobby-card">
+            <h3>CÓMO VA A IR</h3>
+            <ol class="lobby-steps">
+              <li>Un narrador juega una carta y da <b>una sola palabra</b> de su mano.</li>
+              <li>El resto elige en secreto una ilustración que encaje.</li>
+              <li>Todas se revelan y se vota la del narrador.</li>
+              <li>Cada punto es una casilla: los personajes caminan por el sendero.</li>
+              <li>Gana quien esté más lejos tras 5 rondas, o quien llegue a la 30.</li>
+            </ol>
+            <p class="lobby-tip">Con 3 jugadores se añaden cartas fantasma hasta llenar la mesa.</p>
+          </div>
+          <button id="btn-start" class="btn btn-primary btn-big">Empezar la partida</button>
+          <div id="lobby-wait" class="lobby-wait">Esperando a que el anfitrión empiece…</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-table" class="screen screen-table hidden">
+    <div class="topbar">
+      <div id="seats" class="seats"></div>
+      <button id="btn-table-menu" class="icon-btn" title="Salir de la mesa" aria-label="Salir de la mesa">⋯</button>
+    </div>
+
+    <div id="board" class="board">
+      <div id="rail" class="rail" aria-hidden="true"></div>
+      <div id="tokens" class="tokens" aria-hidden="true"></div>
+
+      <aside class="hud-left">
+        <div class="hud-round"><span>RONDA</span><strong id="round-label">1<span>/5</span></strong></div>
+        <div id="timer" class="timer">
+          <svg viewBox="0 0 64 64" aria-hidden="true">
+            <circle class="timer-track" cx="32" cy="32" r="27"></circle>
+            <circle id="timer-ring" class="timer-ring" cx="32" cy="32" r="27"></circle>
+          </svg>
+          <span id="timer-text">—</span>
+        </div>
+        <div id="phase-label" class="hud-phase">…</div>
+      </aside>
+
+      <div id="felt" class="felt">
+        <div class="felt-top">
+          <div id="clue-box" class="clue waiting">
+            <span class="clue-label" id="clue-label">PISTA</span>
+            <strong id="clue-word">· · ·</strong>
+          </div>
+          <div id="phase-hint" class="phase-hint"></div>
+        </div>
+
+        <div id="reveal" class="reveal"></div>
+
+        <div class="felt-bottom">
+          <div id="round-result" class="round-result"></div>
+          <div id="felt-log" class="felt-log"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="handbar">
+      <div class="handbar-top">
+        <div id="words-wrap" class="words-wrap">
+          <span class="words-label">TUS PALABRAS</span>
+          <div id="words" class="words"></div>
+        </div>
+        <div id="actions" class="actions"></div>
+      </div>
+      <div id="hand" class="hand"></div>
+    </div>
+
+    <div id="trade-panel" class="trade-panel hidden"></div>
+  </section>
+
+  <section id="screen-results" class="screen screen-results hidden">
+    <div class="results-wrap">
+      <div class="results-head">
+        <span class="results-kicker">FIN DE LA FRECUENCIA</span>
+        <h2 id="results-title">—</h2>
+        <p id="results-sub"></p>
+      </div>
+      <div id="results-list" class="results-list"></div>
+      <div class="results-actions">
+        <button id="btn-again" class="btn btn-primary">Otra partida</button>
+        <button id="btn-results-exit" class="btn">Salir</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <button id="modal-close" class="modal-x" aria-label="Cerrar">×</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
 </div>
-<script src="vendor/mqtt.min.js?v=1.2.0"></script>
-<script src="js/i18n.js?v=1.2.0"></script>
-<script src="js/config.js?v=1.2.0"></script>
-<script src="js/audio.js?v=1.2.0"></script>
-<script src="js/store.js?v=1.2.0"></script>
-<script src="js/portals.js?v=1.2.0"></script>
-<script src="js/settings.js?v=1.2.0"></script>
-<script src="js/credits.js?v=1.2.0"></script>
-<script src="js/levels.js?v=1.2.0"></script>
-<script src="js/engine.js?v=1.2.0"></script>
-<script src="js/tasks.js?v=1.2.0"></script>
-<script src="js/game.js?v=1.2.0"></script>
-<script src="js/online.js?v=1.2.0"></script>
-<script src="js/app.js?v=1.2.0"></script>
+
+<script src="vendor/mqtt.min.js"></script>
+<script src="js/config.js?v=2.0.0"></script>
+<script src="js/deck.js?v=2.0.0"></script>
+<script src="js/rules.js?v=2.0.0"></script>
+<script src="js/net.js?v=2.0.0"></script>
+<script src="js/sfx.js?v=2.0.0"></script>
+<script src="js/ui.js?v=2.0.0"></script>
+<script src="js/app.js?v=2.0.0"></script>
 </body>
 </html>
