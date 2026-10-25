@@ -37,7 +37,7 @@
       moving: [],
       plates: [],
       doors: [
-        { id: 'gateLink1', type: 'link', pair: 'L1', x: 1934, y: 318, w: 26, h: 152 },
+        { id: 'gateLink1', type: 'link', pair: 'L1', x: 1872, y: 318, w: 26, h: 152 },
         { id: 'gateGlyph1', type: 'glyph', device: 'glyph1', x: 2178, y: 318, w: 26, h: 152 }
       ],
       devices: [
@@ -47,7 +47,7 @@
         { id: 'harm1', type: 'harmonic', char: 'p2', x: 2482, y: 470, label: 'R' }
       ],
       bridges: [
-        { id: 'bridgeHarm1', device: 'harm1', pieces: [P(2700, 438, 90, 16, 'bridge'), P(2790, 412, 96, 16, 'bridge')] }
+        { id: 'bridgeHarm1', device: 'harm1', pieces: [P(2700, 452, 90, 16, 'bridge'), P(2790, 452, 90, 16, 'bridge')] }
       ],
       shards: [
         { id: 's1a', x: 1498, y: 192, hidden: true, requiresEcho: true },
@@ -93,7 +93,7 @@
         { type: 'mushroom', x: 1150, y: 440, s: 0.65 },
         { type: 'torch', x: 1580, y: 470, s: 1 },
         { type: 'fern', x: 1740, y: 470, s: 0.85 },
-        { type: 'rock', x: 1850, y: 470, s: 1.1 },
+        { type: 'rock', x: 1838, y: 470, s: 1.1 },
         { type: 'bone', x: 2015, y: 470, s: 0.8 },
         { type: 'bone', x: 2110, y: 470, s: 0.9, flip: true },
         { type: 'fern', x: 2200, y: 470, s: 0.95 },
@@ -113,7 +113,7 @@
         { type: 'mushroom', x: 840, y: 470, s: 0.8 },
         { type: 'root', x: 1090, y: 470, s: 1.1 },
         { type: 'fossil', x: 1480, y: 470, s: 1 },
-        { type: 'monolith', x: 1880, y: 470, s: 0.9 },
+        { type: 'monolith', x: 1762, y: 470, s: 0.9 },
         { type: 'mushroom', x: 2970, y: 470, s: 0.8 },
         { type: 'root', x: 3130, y: 470, s: 1.2, flip: true },
         { type: 'chain', x: 705, y: 98, s: 1 },
@@ -181,11 +181,11 @@
         P(1264, 222, 110, 14, 'hidden')
       ],
       moving: [
-        { id: 'lift1', x: 2850, y: 392, w: 84, h: 14, axis: 'y', range: 74, speed: 0.8, phase: 0.4 }
+        { id: 'lift1', x: 2736, y: 394, w: 84, h: 14, axis: 'y', range: 76, speed: 0.8, phase: 0.4 }
       ],
       plates: [],
       doors: [
-        { id: 'gateLink2', type: 'link', pair: 'L2', x: 1648, y: 318, w: 26, h: 152 },
+        { id: 'gateLink2', type: 'link', pair: 'L2', x: 1590, y: 318, w: 26, h: 152 },
         { id: 'gateGlyph2', type: 'glyph', device: 'glyph2', x: 1962, y: 318, w: 26, h: 152 }
       ],
       devices: [
@@ -195,7 +195,7 @@
         { id: 'harm2', type: 'harmonic', char: 'p2', x: 2200, y: 470, label: 'R' }
       ],
       bridges: [
-        { id: 'bridgeHarm2', device: 'harm2', pieces: [P(2478, 434, 82, 16, 'bridge'), P(2560, 408, 86, 16, 'bridge')] }
+        { id: 'bridgeHarm2', device: 'harm2', pieces: [P(2478, 452, 72, 16, 'bridge'), P(2550, 452, 70, 16, 'bridge')] }
       ],
       shards: [
         { id: 's2a', x: 1318, y: 190, hidden: true, requiresEcho: true },
@@ -229,14 +229,14 @@
         { type: 'statue', x: 1000, y: 470, s: 1.05 },
         { type: 'torch', x: 1200, y: 470, s: 1 },
         { type: 'column', x: 1450, y: 470, s: 0.95 },
-        { type: 'urn', x: 1580, y: 470, s: 0.9 },
+        { type: 'urn', x: 1540, y: 470, s: 0.9 },
         { type: 'statue', x: 1850, y: 470, s: 1 },
         { type: 'torch', x: 2020, y: 470, s: 1 },
         { type: 'column', x: 2300, y: 470, s: 1 },
         { type: 'urn', x: 2340, y: 470, s: 0.75 },
         { type: 'vine', x: 2200, y: 414, s: 0.9 },
         { type: 'column', x: 2680, y: 470, s: 1.1 },
-        { type: 'statue', x: 2750, y: 470, s: 1.1 },
+        { type: 'statue', x: 3140, y: 470, s: 1.1 },
         { type: 'urn', x: 2900, y: 470, s: 1 },
         { type: 'column', x: 2980, y: 470, s: 0.9 },
         { type: 'torch', x: 3100, y: 470, s: 1 },
@@ -262,12 +262,12 @@
         { type: 'brazier', x: 380, y: 470, s: 0.95 },
         { type: 'obelisk', x: 1040, y: 470, s: 0.9 },
         { type: 'brazier', x: 1230, y: 470, s: 0.85, flip: true },
-        { type: 'obelisk', x: 1955, y: 470, s: 1 },
+        { type: 'obelisk', x: 1930, y: 470, s: 1 },
         { type: 'brazier', x: 2640, y: 470, s: 0.95 },
         { type: 'brazier', x: 3245, y: 470, s: 0.9, flip: true },
         { type: 'urn', x: 690, y: 470, s: 0.7 },
         { type: 'vine', x: 790, y: 338, s: 0.9 },
-        { type: 'torch', x: 1600, y: 470, s: 0.85 },
+        { type: 'torch', x: 1810, y: 470, s: 0.85 },
         { type: 'column', x: 2440, y: 470, s: 0.8 }
       ],
       foreground: [
@@ -316,11 +316,11 @@
       bridges: [],
       shards: [],
       orbs: [
-        { x: 900, y: 300, minX: 850, maxX: 1100, speed: 1.15, phase: 0.4, r: 10 },
-        { x: 1600, y: 300, minX: 1500, maxX: 1800, speed: 1.25, phase: 2.2, r: 10 }
+        { x: 900, y: 272, minX: 850, maxX: 1100, speed: 1.15, phase: 0.4, r: 10 },
+        { x: 1600, y: 262, minX: 1500, maxX: 1800, speed: 1.25, phase: 2.2, r: 10 }
       ],
       extraOrbs: [
-        { x: 2000, y: 300, minX: 1950, maxX: 2200, speed: 1.5, phase: 1.1, r: 10 }
+        { x: 2000, y: 268, minX: 1950, maxX: 2200, speed: 1.5, phase: 1.1, r: 10 }
       ],
       checkpoints: [
         { x: 110, y: 440 },

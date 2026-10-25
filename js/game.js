@@ -96,6 +96,7 @@
       if (CF.characters[si].id === this.cfg.startChar) soloChar = this.cfg.startChar;
     }
     if (this.mode === 'solo') {
+      // solo: one body at a time; 1/2/3 hands the body over to another scientist
       this.localChars = [soloChar];
     }
     if (this.mode === 'coop') this.localChars = ['p1', 'p2', 'p3'];
@@ -249,6 +250,8 @@
       CF.app.toast(t('msg.linkNeed'), 'err');
       return false;
     }
+    // In solo the active scientist carries the whole link: no second body required.
+    if (this.mode === 'solo') return true;
     if (this.online && this.online.myId) {
       if (l.byClient && l.byClient === this.online.myId) {
         CF.app.toast(t('msg.linkNeed'), 'err');
@@ -298,6 +301,37 @@
   Game.prototype.notify = function (key, vars, quiet) {
     if (CF.app && CF.app.toast && !quiet) CF.app.toast(t(key, vars), 'info');
     if (quiet) return;
+  };
+
+  Game.prototype.switchChar = function (id) {
+    if (this.mode !== 'solo' || !this.running || this.paused || this.taskOpen) return;
+    if (id === this.activeChar || !this.chars[id]) return;
+    var prev = this.chars[this.activeChar];
+    var next = this.chars[id];
+    if (prev) {
+      next.x = prev.x;
+      next.y = prev.y;
+      next.vx = prev.vx;
+      next.vy = prev.vy;
+      next.dir = prev.dir;
+      next.anim = prev.anim;
+      next.onGround = prev.onGround;
+      next.coyote = prev.coyote;
+      next.jumpBuffer = prev.jumpBuffer;
+      next.jumpCut = prev.jumpCut;
+      next.rideId = prev.rideId;
+      prev.vx = 0;
+    }
+    next.immuneUntil = Math.max(next.immuneUntil, this.time + 0.5);
+    this.activeChar = id;
+    this.localChars = [id];
+    this.owner = {};
+    this.owner[id] = true;
+    next.remote = false;
+    this.fx.burst(next.x + next.w / 2, next.y + next.h / 2, next.def.accent, 20, 120);
+    this.ring(next.x + next.w / 2, next.y + next.h / 2, next.def.accent);
+    CF.audio.play(CF.cues.uiClick, { gain: 0.5 });
+    CF.app.toast(t('msg.switchChar', { name: t(next.def.nameKey) }), 'info');
   };
 
   Game.prototype.respawn = function (ch) {
@@ -392,6 +426,12 @@
     this.time += dt;
     var input = this.input;
     var level = this.level;
+
+    if (this.mode === 'solo') {
+      if (input.wasPressed('Digit1')) this.switchChar('p1');
+      else if (input.wasPressed('Digit2')) this.switchChar('p2');
+      else if (input.wasPressed('Digit3')) this.switchChar('p3');
+    }
 
     if (input.wasPressed('Escape') && this.cfg.onPause) {
       this.cfg.onPause();
@@ -1094,7 +1134,7 @@
       E.drawPlatform(ctx, hp, level.era, this.time, {
         quality: quality,
         revealed: reveal,
-        faint: this.difficulty.hintLevel !== 'minimal'
+        faint: true
       });
     }
     for (var mid in this.movingPos) {
@@ -1104,7 +1144,10 @@
     }
     for (i = 0; i < level.bridges.length; i++) {
       var br = level.bridges[i];
-      if (!this.bridges[br.id]) continue;
+      if (!this.bridges[br.id]) {
+        if (quality !== 'low') E.drawBridgeGhost(ctx, br.pieces, level.era, this.time);
+        continue;
+      }
       for (var k = 0; k < br.pieces.length; k++) {
         var bp = br.pieces[k];
         E.drawPlatform(ctx, bp, level.era, this.time, { quality: quality });
@@ -1125,6 +1168,7 @@
       var cp = level.checkpoints[i];
       E.drawCheckpoint(ctx, cp, i <= this.checkpointIndex, this.time);
     }
+    if (quality !== 'low') this.drawPuzzleLinks(ctx, camX);
     for (i = 0; i < level.devices.length; i++) {
       var dev = level.devices[i];
       E.drawDevice(ctx, dev, !!this.devices[dev.id], this.time, level.era);
@@ -1330,6 +1374,8 @@
       }
       if (this.mode === 'coop') {
         E.txt(ctx, t('hud.coopTips'), pad + 54, pad + 65, 7, '#8ea2c7');
+      } else if (this.mode === 'solo') {
+        E.txt(ctx, t('hud.switch'), pad + 54, pad + 65, 7, '#8ea2c7');
       }
       if (this.mode === 'online') {
         E.txt(ctx, t('hud.locked') + ' · ' + this.startChar.toUpperCase(), pad + 54, pad + 65, 7, '#57ffa8');
@@ -1371,10 +1417,11 @@
     if (hint) {
       var hw = 640;
       var hx = (E.W - hw) / 2;
-      E.panel(ctx, hx, E.H - 132, hw, 42, 0.7);
-      E.txt(ctx, hint, E.W / 2, E.H - 107, 8.5, '#d6e2f5', 'center');
+      var hy = 92;
+      E.panel(ctx, hx, hy, hw, 42, 0.66);
+      E.txt(ctx, hint, E.W / 2, hy + 17, 8.5, '#d6e2f5', 'center');
       var ctrl = this.mode === 'coop' ? t('hint.coop') : this.mode === 'online' ? t('hint.online') : t('hint.move');
-      E.txt(ctx, ctrl, E.W / 2, E.H - 92, 7, '#7183a6', 'center');
+      E.txt(ctx, ctrl, E.W / 2, hy + 32, 7, '#7183a6', 'center');
     }
 
     if (this.mode === 'online') {
@@ -1484,6 +1531,82 @@
       return t('hint.onlineFew');
     }
     return t(hint);
+  };
+
+  Game.prototype.drawPuzzleLinks = function (ctx, camX) {
+    var t = this.time;
+    var self = this;
+    var visible = function (x) { return x > camX - 130 && x < camX + E.W + 130; };
+
+    function signalArc(x1, y1, x2, y2, col, active, lift) {
+      var midX = (x1 + x2) / 2;
+      var topY = Math.min(y1, y2) - (lift || Math.min(130, 54 + Math.abs(x2 - x1) * 0.16));
+      ctx.save();
+      ctx.strokeStyle = col;
+      ctx.globalAlpha = active ? 0.62 : 0.24;
+      ctx.lineWidth = 1;
+      if (!active) ctx.setLineDash([4, 7]);
+      ctx.shadowColor = col;
+      ctx.shadowBlur = active ? 9 : 3;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.quadraticCurveTo(midX, topY, x2, y2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = active ? 0.85 : 0.42;
+      ctx.fillStyle = col;
+      ctx.fillRect(x1 - 1.5, y1 - 1.5, 3, 3);
+      ctx.fillRect(x2 - 1.5, y2 - 1.5, 3, 3);
+      // travelling signal pulse
+      var p = (t * (active ? 0.55 : 0.32) + x1 * 0.003) % 1;
+      var mt = 1 - p;
+      var px = mt * mt * x1 + 2 * mt * p * midX + p * p * x2;
+      var py = mt * mt * y1 + 2 * mt * p * topY + p * p * y2;
+      ctx.globalAlpha = active ? 0.95 : 0.5;
+      ctx.fillRect(px - 1, py - 1, 2, 2);
+      ctx.restore();
+    }
+
+    var i, j;
+    for (i = 0; i < this.level.devices.length; i++) {
+      var dev = this.level.devices[i];
+      if (dev.type === 'link' && dev.role === 'vision') {
+        var act = null;
+        for (j = 0; j < this.level.devices.length; j++) {
+          var d2 = this.level.devices[j];
+          if (d2.type === 'link' && d2.role === 'action' && d2.pair === dev.pair) act = d2;
+        }
+        if (!act || (!visible(dev.x) && !visible(act.x))) continue;
+        var l = this.links[dev.pair] || {};
+        var on = !!l.vision && this.time <= l.vision;
+        signalArc(dev.x, dev.y - 30, act.x, act.y - 30, on ? '#57ffa8' : '#52f0e6', on);
+        if (l.solved) {
+          var ldoor = null;
+          for (j = 0; j < this.level.doors.length; j++) {
+            if (this.level.doors[j].type === 'link' && this.level.doors[j].pair === dev.pair) ldoor = this.level.doors[j];
+          }
+          if (ldoor) signalArc(act.x, act.y - 30, ldoor.x + ldoor.w / 2, ldoor.y + 18, '#57ffa8', true, 48);
+        }
+      } else if (dev.type === 'glyph') {
+        var gdoor = null;
+        for (j = 0; j < this.level.doors.length; j++) {
+          if (this.level.doors[j].device === dev.id) gdoor = this.level.doors[j];
+        }
+        if (!gdoor || (!visible(dev.x) && !visible(gdoor.x))) continue;
+        signalArc(dev.x, dev.y - 30, gdoor.x + gdoor.w / 2, gdoor.y + 16, '#b98bff', !!this.devices[dev.id], 44);
+      } else if (dev.type === 'harmonic') {
+        var bpiece = null;
+        for (j = 0; j < this.level.bridges.length; j++) {
+          if (this.level.bridges[j].device === dev.id && this.level.bridges[j].pieces.length) {
+            var bp = this.level.bridges[j].pieces[0];
+            bpiece = { x: bp.x + bp.w / 2, y: bp.y - 10 };
+          }
+        }
+        if (!bpiece || (!visible(dev.x) && !visible(bpiece.x))) continue;
+        signalArc(dev.x, dev.y - 30, bpiece.x, bpiece.y, '#ffbf5e', !!this.devices[dev.id], 40);
+      }
+    }
+    void self;
   };
 
   Game.prototype.drawPuzzleBeacons = function (ctx, camX) {
