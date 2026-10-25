@@ -60,6 +60,22 @@
     {
       id: 'violeta', bg: '#130e1c', deep: '#241a34', ink: '#05030a',
       glow: '#c2a6ff', warm: '#f0c9d8', accent: '#ff7ac8', mist: '#3a2c52', line: '#fbf1ff'
+    },
+    {
+      id: 'cobre', bg: '#180d09', deep: '#2e1911', ink: '#080302',
+      glow: '#ffa878', warm: '#ffdcae', accent: '#d96f45', mist: '#4c2b1e', line: '#fff1e4'
+    },
+    {
+      id: 'glaciar', bg: '#08161d', deep: '#0f2c39', ink: '#02080c',
+      glow: '#a4e9ff', warm: '#e8f9ff', accent: '#5cb6ff', mist: '#1e4553', line: '#f2fdff'
+    },
+    {
+      id: 'oliva', bg: '#13160a', deep: '#262d14', ink: '#060803',
+      glow: '#d3e590', warm: '#f5ecc2', accent: '#9fc257', mist: '#3a4322', line: '#fbffe9'
+    },
+    {
+      id: 'magma', bg: '#170808', deep: '#301212', ink: '#080202',
+      glow: '#ff9270', warm: '#ffd39a', accent: '#ff5f5f', mist: '#4c1e1e', line: '#fff0ea'
     }
   ];
 
@@ -478,6 +494,152 @@
         out += '<path d="M0 366 Q75 356 150 366 T300 366 L300 420 L0 420Z" fill="' + p.ink + '" opacity=".85"/>';
         return out;
       }
+    },
+    {
+      id: 'reloj',
+      draw: function (r, p) {
+        var out = stars(r, p, 22, 250);
+        out += '<circle cx="150" cy="214" r="108" fill="' + p.deep + '" opacity=".32"/>';
+        out += '<path d="M150 44 C150 74 118 78 118 106" fill="none" stroke="' + p.warm + '" stroke-opacity=".5" stroke-width="2.2"/>';
+        out += '<circle cx="150" cy="38" r="10" fill="none" stroke="' + p.warm + '" stroke-opacity=".55" stroke-width="3"/>';
+        out += glowCircle(150, 214, 70, p.glow, 0.2, 0.08, 0.04);
+        out += '<circle cx="150" cy="214" r="98" fill="' + p.ink + '" opacity=".92"/>';
+        out += '<circle cx="150" cy="214" r="98" fill="none" stroke="' + p.warm + '" stroke-opacity=".45" stroke-width="3"/>';
+        out += '<circle cx="150" cy="214" r="84" fill="' + p.deep + '" opacity=".68"/>';
+        out += '<circle cx="150" cy="214" r="84" fill="none" stroke="' + p.line + '" stroke-opacity=".14"/>';
+        for (var i = 0; i < 12; i++) {
+          var a = i * Math.PI / 6 - Math.PI / 2;
+          var r1 = 72, r2 = i % 3 === 0 ? 58 : 64;
+          out += '<line x1="' + fx(150 + Math.cos(a) * r1) + '" y1="' + fx(214 + Math.sin(a) * r1) +
+            '" x2="' + fx(150 + Math.cos(a) * r2) + '" y2="' + fx(214 + Math.sin(a) * r2) +
+            '" stroke="' + (i % 3 === 0 ? p.warm : p.line) + '" stroke-opacity="' + (i % 3 === 0 ? 0.6 : 0.24) +
+            '" stroke-width="' + (i % 3 === 0 ? 3 : 1.4) + '"/>';
+        }
+        out += '<line x1="150" y1="214" x2="150" y2="154" stroke="' + p.glow + '" stroke-width="3.4" stroke-linecap="round" opacity=".9"/>';
+        out += '<line x1="150" y1="214" x2="197" y2="244" stroke="' + p.accent + '" stroke-width="2.6" stroke-linecap="round" opacity=".9"/>';
+        out += '<circle cx="150" cy="214" r="7" fill="' + p.warm + '"/>';
+        out += '<circle cx="150" cy="214" r="15" fill="' + p.glow + '" opacity=".12"/>';
+        out += '<path d="M62 306 Q150 346 238 306" fill="none" stroke="' + p.warm + '" stroke-opacity=".18"/>';
+        out += '<path d="M0 368 Q75 356 150 368 T300 368 L300 420 L0 420Z" fill="' + p.ink + '" opacity=".85"/>';
+        return out;
+      }
+    },
+    {
+      id: 'ceniza',
+      draw: function (r, p) {
+        var out = stars(r, p, 26, 260);
+        out += glowCircle(150, 300, 46, p.warm, 0.5, 0.12, 0.05);
+        out += '<path d="M0 330 Q75 310 150 326 T300 324 L300 420 L0 420Z" fill="' + p.ink + '" opacity=".82"/>';
+        out += '<path d="M86 344 Q150 300 214 344Z" fill="' + p.deep + '" opacity=".9"/>';
+        out += '<path d="M118 350 Q150 326 182 350" fill="none" stroke="' + p.warm + '" stroke-opacity=".55" stroke-width="2"/>';
+        out += '<path d="M150 330 C124 286 96 276 104 230 C110 194 140 190 144 226 C148 260 168 270 174 238 C180 202 204 188 212 220 C224 266 190 300 180 336Z" fill="' + p.deep + '" opacity=".82"/>';
+        out += '<path d="M150 322 C134 292 118 284 124 254 C130 226 148 224 150 248 C152 274 168 278 176 258 C184 236 196 244 196 266 C196 296 174 312 166 330Z" fill="' + p.accent + '" opacity=".35"/>';
+        for (var i = 0; i < 40; i++) {
+          var x = rr(r, 28, 272), y = rr(r, 78, 330), rad = rr(r, 0.8, 2.8);
+          var col = i % 3 === 0 ? p.warm : (i % 3 === 1 ? p.accent : p.glow);
+          out += '<circle cx="' + fx(x) + '" cy="' + fx(y) + '" r="' + fx(rad) + '" fill="' + col +
+            '" opacity="' + fx(rr(r, 0.18, 0.75), 2) + '"/>';
+          if (i % 5 === 0) {
+            out += '<line x1="' + fx(x) + '" y1="' + fx(y + 4) + '" x2="' + fx(x + rr(r, -4, 4)) +
+              '" y2="' + fx(y + rr(r, 12, 28)) + '" stroke="' + col + '" stroke-opacity=".2" stroke-width="1"/>';
+          }
+        }
+        out += '<path d="M96 356 Q150 342 204 356" fill="none" stroke="' + p.warm + '" stroke-opacity=".2"/>';
+        return out;
+      }
+    },
+    {
+      id: 'caracola',
+      draw: function (r, p) {
+        var out = stars(r, p, 24, 250);
+        out += glowCircle(150, 214, 74, p.warm, 0.55, 0.12, 0.05);
+        out += '<ellipse cx="150" cy="366" rx="92" ry="12" fill="' + p.ink + '" opacity=".55"/>';
+        var pts = [];
+        for (var i = 0; i <= 120; i++) {
+          var t = i * 0.11;
+          var rad = 4 + t * 5.6;
+          var x = 150 + Math.cos(t + 0.4) * rad;
+          var y = 214 + Math.sin(t + 0.4) * rad;
+          pts.push((i ? 'L' : 'M') + fx(x) + ' ' + fx(y));
+        }
+        var spiral = pts.join(' ');
+        for (var k = 0; k < 10; k++) {
+          var a = k * Math.PI * 2 / 10 + 0.4;
+          out += '<line x1="' + fx(150 + Math.cos(a) * 12) + '" y1="' + fx(214 + Math.sin(a) * 12) +
+            '" x2="' + fx(150 + Math.cos(a) * 82) + '" y2="' + fx(214 + Math.sin(a) * 82) +
+            '" stroke="' + p.warm + '" stroke-opacity=".07" stroke-width="3"/>';
+        }
+        out += '<path d="' + spiral + '" fill="none" stroke="' + p.ink + '" stroke-width="15" stroke-linecap="round" opacity=".9"/>';
+        out += '<path d="' + spiral + '" fill="none" stroke="' + p.warm + '" stroke-width="2.2" stroke-linecap="round" stroke-opacity=".55"/>';
+        out += '<path d="' + spiral + '" fill="none" stroke="' + p.glow + '" stroke-width="1" stroke-linecap="round" stroke-opacity=".3"/>';
+        out += '<circle cx="150" cy="214" r="5" fill="' + p.warm + '"/>';
+        out += '<circle cx="150" cy="214" r="14" fill="' + p.glow + '" opacity=".1"/>';
+        out += '<path d="M0 374 Q75 362 150 374 T300 374 L300 420 L0 420Z" fill="' + p.ink + '" opacity=".8"/>';
+        return out;
+      }
+    },
+    {
+      id: 'cristal',
+      draw: function (r, p) {
+        var out = stars(r, p, 26, 240);
+        out += glowCircle(150, 206, 62, p.glow, 0.28, 0.1, 0.04);
+        out += '<path d="M150 82 L286 150 L150 330 L14 150Z" fill="' + p.glow + '" opacity=".05"/>';
+        out += '<polygon points="150,58 198,178 150,342 102,178" fill="' + p.deep + '" opacity=".88" stroke="' + p.line + '" stroke-opacity=".3"/>';
+        out += '<polygon points="150,58 150,342 102,178" fill="' + p.ink + '" opacity=".45"/>';
+        out += '<polygon points="150,58 198,178 150,206 150,58" fill="' + p.glow + '" opacity=".14"/>';
+        out += '<path d="M150 58 L150 342 M102 178 L198 178" stroke="' + p.line + '" stroke-opacity=".22"/>';
+        out += '<polygon points="88,208 116,260 98,330 72,272" fill="' + p.deep + '" opacity=".8" stroke="' + p.line + '" stroke-opacity=".2"/>';
+        out += '<polygon points="212,196 242,246 224,326 198,264" fill="' + p.deep + '" opacity=".8" stroke="' + p.line + '" stroke-opacity=".2"/>';
+        var sparks = [[74, 118], [236, 108], [214, 300], [88, 296], [260, 204]];
+        sparks.forEach(function (s) {
+          out += '<path d="M' + s[0] + ' ' + (s[1] - 8) + ' L' + s[0] + ' ' + (s[1] + 8) +
+            ' M' + (s[0] - 8) + ' ' + s[1] + ' L' + (s[0] + 8) + ' ' + s[1] +
+            '" stroke="' + p.warm + '" stroke-opacity=".55" stroke-width="1.4"/>';
+        });
+        out += '<path d="M0 372 Q75 360 150 372 T300 372 L300 420 L0 420Z" fill="' + p.ink + '" opacity=".8"/>';
+        return out;
+      }
+    },
+    {
+      id: 'ancla',
+      draw: function (r, p) {
+        var out = stars(r, p, 22, 250);
+        out += glowCircle(150, 240, 54, p.warm, 0.4, 0.1, 0.04);
+        out += '<circle cx="150" cy="86" r="18" fill="none" stroke="' + p.warm + '" stroke-opacity=".7" stroke-width="5"/>';
+        out += '<path d="M150 104 L150 322" stroke="' + p.warm + '" stroke-opacity=".75" stroke-width="7" stroke-linecap="round"/>';
+        out += '<path d="M108 150 L192 150" stroke="' + p.warm + '" stroke-opacity=".7" stroke-width="6" stroke-linecap="round"/>';
+        out += '<path d="M66 248 Q66 336 150 344 Q234 336 234 248" fill="none" stroke="' + p.warm + '" stroke-opacity=".75" stroke-width="7" stroke-linecap="round"/>';
+        out += '<path d="M66 248 L44 224 M66 248 L88 230" stroke="' + p.warm + '" stroke-opacity=".65" stroke-width="5" stroke-linecap="round"/>';
+        out += '<path d="M234 248 L256 224 M234 248 L212 230" stroke="' + p.warm + '" stroke-opacity=".65" stroke-width="5" stroke-linecap="round"/>';
+        for (var i = 0; i < 3; i++) {
+          out += '<path d="M138 ' + (186 + i * 14) + ' Q150 ' + (194 + i * 14) + ' 162 ' + (186 + i * 14) +
+            '" fill="none" stroke="' + p.glow + '" stroke-opacity=".22" stroke-width="2"/>';
+        }
+        out += '<path d="M0 352 Q75 340 150 352 T300 352" fill="none" stroke="' + p.glow + '" stroke-opacity=".22" stroke-width="1.4"/>';
+        out += '<path d="M0 376 Q75 364 150 376 T300 376" fill="none" stroke="' + p.glow + '" stroke-opacity=".15" stroke-width="1.2"/>';
+        out += mist(r, p, 330);
+        return out;
+      }
+    },
+    {
+      id: 'telescopio',
+      draw: function (r, p) {
+        var out = stars(r, p, 30, 210);
+        out += glowCircle(248, 84, 30, p.warm, 0.55, 0.12, 0.05);
+        out += '<path d="M150 262 L104 388 M150 262 L196 388 M150 262 L150 372" stroke="' + p.warm + '" stroke-opacity=".48" stroke-width="3.4" stroke-linecap="round"/>';
+        out += '<circle cx="150" cy="262" r="6" fill="' + p.warm + '" opacity=".7"/>';
+        out += '<path d="M78 214 L206 150 L236 194 L108 258 Z" fill="' + p.deep + '" opacity=".95" stroke="' + p.line + '" stroke-opacity=".24"/>';
+        out += '<path d="M206 150 L236 194 L248 188 L218 144 Z" fill="' + p.ink + '" opacity=".85"/>';
+        out += '<ellipse cx="229" cy="183" rx="12" ry="28" transform="rotate(-26 229 183)" fill="' + p.glow + '" opacity=".22"/>';
+        out += '<ellipse cx="229" cy="183" rx="12" ry="28" transform="rotate(-26 229 183)" fill="none" stroke="' + p.glow + '" stroke-opacity=".55" stroke-width="1.8"/>';
+        out += '<circle cx="86" cy="218" r="10" fill="' + p.ink + '" stroke="' + p.warm + '" stroke-opacity=".5" stroke-width="3"/>';
+        out += '<path d="M240 174 L300 80 L282 156 Z" fill="' + p.glow + '" opacity=".055"/>';
+        out += '<path d="M250 62 L254 76 L268 80 L254 84 L250 98 L246 84 L232 80 L246 76 Z" fill="' + p.warm + '" opacity=".7"/>';
+        out += '<circle cx="216" cy="54" r="2" fill="' + p.glow + '"/>';
+        out += '<circle cx="278" cy="112" r="1.8" fill="' + p.glow + '"/>';
+        out += '<path d="M0 378 Q75 366 150 378 T300 378 L300 420 L0 420Z" fill="' + p.ink + '" opacity=".82"/>';
+        return out;
+      }
     }
   ];
 
@@ -517,7 +679,7 @@
   });
 
   var neutral = [];
-  motifs.slice(0, 12).forEach(function (m, mi) {
+  motifs.slice(0, 18).forEach(function (m, mi) {
     var r = mulberry32(4441 + mi * 313);
     var uid = 'n' + mi;
     var inner = m.draw(r, neutralPalette, uid);
@@ -543,7 +705,8 @@
     'brújula', 'semilla', 'relámpago', 'nido', 'espejo', 'hueso', 'fuego', 'olvido',
     'cordillera', 'vapor', 'sal', 'aguja', 'jardín', 'sed', 'jaula', 'cuerda',
     'aurora', 'piedra', 'nombre', 'paso', 'sombra', 'miel', 'invierno', 'puente',
-    'voz', 'cicatriz', 'faro', 'enjambre', 'tinta', 'abismo', 'tacto', 'distancia'
+    'voz', 'cicatriz', 'faro', 'enjambre', 'tinta', 'abismo', 'tacto', 'distancia',
+    'rescoldo', 'bruma', 'cauce', 'silbido', 'orilla', 'péndulo', 'murmullo', 'grieta'
   ];
 
   function shuffle(list, rnd) {

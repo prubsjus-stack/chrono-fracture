@@ -1,10 +1,10 @@
-/* FRECUENCIA ROTA · configuración global (v2.0.0) */
+/* FRECUENCIA ROTA · configuración global (v2.1.0) */
 (function () {
   'use strict';
 
   var CF = window.CF = window.CF || {};
 
-  CF.VERSION = '2.0.1';
+  CF.VERSION = '2.1.0';
   CF.TITLE = 'FRECUENCIA ROTA';
   CF.SUBTITLE = 'un juego de cartas sobre lo que no se puede decir';
 
@@ -19,6 +19,19 @@
 
   CF.CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   CF.CODE_LENGTH = 4;
+
+  /* Pistas escritas: una sola palabra, de 2 a 24 letras (con acentos). */
+  CF.validClue = function (raw) {
+    var word = String(raw == null ? '' : raw).trim();
+    if (word.length < 2 || word.length > 24) return '';
+    var ok = false;
+    try {
+      ok = /^[\p{L}\p{M}]+$/u.test(word);
+    } catch (e) {
+      ok = /^[A-Za-zÀ-ÖØ-öø-ÿĀ-ž]+$/.test(word);
+    }
+    return ok ? word : '';
+  };
 
   /* Duraciones en segundos. La ronda se cierra antes si todos han actuado. */
   CF.TIMERS = {

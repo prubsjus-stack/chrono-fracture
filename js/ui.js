@@ -7,9 +7,10 @@
 
   var h = {};
   var el = {};
-  var cache = { chars: '', seats: '', hand: '', words: '', reveal: '', actions: '', trade: '', log: '', result: '' };
+  var cache = { chars: '', seats: '', hand: '', words: '', reveal: '', actions: '', trade: '', log: '', result: '', rail: '' };
   var tokens = {};
   var tokenCells = {};
+  var cellNodes = [];
   var walkTimers = {};
   var jumpTimers = {};
   var lastPhase = null;
@@ -50,6 +51,9 @@
     });
     $('in-name').addEventListener('keydown', function (e) {
       if (e.key === 'Enter') $('btn-create').focus();
+    });
+    window.addEventListener('resize', function () {
+      if (screen === 'table') layoutArrows();
     });
     $('char-picker').addEventListener('click', function (e) {
       var b = e.target.closest('[data-char]');
@@ -92,8 +96,26 @@
       var b = e.target.closest('[data-word]');
       if (!b || b.disabled) return;
       CF.Sfx.click();
+      var wasSelected = b.classList.contains('sel');
       h.pickWord && h.pickWord(b.getAttribute('data-word'));
+      if (!wasSelected) {
+        var input = $('in-clue');
+        if (input) input.value = '';
+      }
     });
+    var clueInput = $('in-clue');
+    if (clueInput) {
+      clueInput.addEventListener('input', function () {
+        var clean = this.value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿĀ-ž\u0300-\u036f]/g, '').slice(0, 24);
+        if (clean !== this.value) this.value = clean;
+        h.clueWord && h.clueWord(clean);
+      });
+      clueInput.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        var b = $('actions').querySelector('[data-act="narrate"]');
+        if (b && !b.disabled) b.click();
+      });
+    }
     $('actions').addEventListener('click', function (e) {
       var b = e.target.closest('[data-act]');
       if (!b || b.disabled) return;
@@ -164,6 +186,8 @@
     });
     if (name !== 'table') {
       Object.keys(tokens).forEach(function (p) { tokens[p].style.opacity = '0'; });
+    } else {
+      layoutArrows();
     }
   }
 
@@ -265,17 +289,62 @@
       if (i === 0) cls += ' start';
       if (i === CF.CELLS) cls += ' finish';
       if (i > 0 && i % 5 === 0) cls += ' milestone';
-      var label = i === 0 ? 'SALIDA' : String(i);
-      html += '<div class="' + cls + '" data-cell="' + i + '" style="left:' + pos.x.toFixed(3) + '%;top:' + pos.y.toFixed(3) + '%">' +
+      var label = i === 0 ? 'SALIDA' : (i === CF.CELLS ? 'META' : String(i));
+      var title = i === 0 ? 'Salida · casilla 0' : (i === CF.CELLS ? 'Meta · casilla 30' : 'Casilla ' + i);
+      html += '<div class="' + cls + '" data-cell="' + i + '" title="' + title + '" style="left:' + pos.x.toFixed(3) + '%;top:' + pos.y.toFixed(3) + '%">' +
         '<span>' + label + '</span></div>';
     }
+    [3, 8, 13, 18, 23, 28].forEach(function (k) {
+      var pos = cellPos(k + 0.5);
+      html += '<i class="rail-arrow" data-after="' + k + '" style="left:' + pos.x.toFixed(3) + '%;top:' + pos.y.toFixed(3) +
+        '%;transform:translate(-50%,-50%)"></i>';
+    });
     $('rail').innerHTML = html;
+    cellNodes = Array.prototype.slice.call($('rail').querySelectorAll('.cell'));
+    layoutArrows();
+  }
+
+  /* Orienta cada flecha según la posición real de sus dos casillas vecinas. */
+  function layoutArrows() {
+    if (!cellNodes.length) return;
+    var arrows = $('rail').querySelectorAll('.rail-arrow');
+    Array.prototype.forEach.call(arrows, function (node) {
+      var k = parseInt(node.getAttribute('data-after'), 10);
+      var from = cellNodes[k];
+      var to = cellNodes[k + 1];
+      if (!from || !to) return;
+      var a = from.getBoundingClientRect();
+      var b = to.getBoundingClientRect();
+      if (!a.width || !b.width) return;
+      var dx = (b.left + b.width / 2) - (a.left + a.width / 2);
+      var dy = (b.top + b.height / 2) - (a.top + a.height / 2);
+      var deg = Math.atan2(dy, dx) * 180 / Math.PI;
+      node.style.transform = 'translate(-50%,-50%) rotate(' + deg.toFixed(1) + 'deg)';
+    });
   }
 
   function cellPos(cell) {
     var n = CF.CELLS + 1;
     var a = Math.PI / 2 + (cell / n) * Math.PI * 2;
     return { x: 52.5 + 39.8 * Math.cos(a), y: 51 + 37.8 * Math.sin(a) };
+  }
+
+  function paintRail(pub) {
+    var list = pub.players || [];
+    var key = list.map(function (p) { return p.id + ':' + p.cell + ':' + p.connected; }).join('|');
+    if (key === cache.rail) return;
+    cache.rail = key;
+    var occupied = {};
+    var lead = 0;
+    list.forEach(function (p) {
+      if (!p.connected) return;
+      occupied[p.cell] = true;
+      if (p.cell > lead) lead = p.cell;
+    });
+    cellNodes.forEach(function (node, i) {
+      node.classList.toggle('occupied', !!occupied[i]);
+      node.classList.toggle('lead', lead > 0 && i === lead);
+    });
   }
 
   function nameOf(pub, pid) {
@@ -311,6 +380,7 @@
     renderResult(pub);
     renderLog(pub);
     renderTrade(pub, priv, me, ctx, canTrade);
+    paintRail(pub);
     renderTokens(pub);
 
     var voteKey = pub.phase + '|' + (pub.table || []).length + '|' + pub.round;
@@ -455,20 +525,30 @@
   }
 
   function renderClue(pub, ctx, canClue) {
-    var word = pub.clue && pub.clue.word ? pub.clue.word : '';
-    if (canClue && ctx.sel.word) word = ctx.sel.word;
+    var typed = (canClue && ctx.sel.custom) || '';
+    var word = '';
+    if (canClue) word = typed || ctx.sel.word || '';
+    else if (pub.clue && pub.clue.word) word = pub.clue.word;
+    var box = $('custom-clue');
+    if (box) {
+      box.classList.toggle('hidden', !canClue);
+      var input = $('in-clue');
+      if (input && !canClue && input.value) input.value = '';
+    }
+    var label = 'PISTA';
+    if (canClue) label = typed ? 'TU PISTA ESCRITA' : (ctx.sel.word ? 'TU PALABRA' : 'ELIGE O ESCRIBE');
     $('clue-word').textContent = word || '· · ·';
-    $('clue-label').textContent = canClue ? (ctx.sel.word ? 'TU PALABRA' : 'ELIGE UNA PALABRA') : 'PISTA';
+    $('clue-label').textContent = label;
     $('clue-box').classList.toggle('waiting', !word);
-    $('clue-box').classList.toggle('picking', !!canClue && !ctx.sel.word);
-    $('clue-box').classList.toggle('mine', !!canClue && !!ctx.sel.word);
+    $('clue-box').classList.toggle('picking', !!canClue && !word);
+    $('clue-box').classList.toggle('mine', !!canClue && !!word);
   }
 
   function renderHint(pub, me, canClue, canSubmit, canVote, canTrade) {
     var narrName = nameOf(pub, pub.narrator);
     var text = '';
     if (pub.phase === 'clue') {
-      text = canClue ? 'Elige una de tus cartas y una sola palabra de tu mano.' : narrName + ' elige una carta y una palabra…';
+      text = canClue ? 'Elige una carta y una palabra de tu mano, o escribe la tuya.' : narrName + ' elige una carta y una palabra…';
     } else if (pub.phase === 'submit') {
       text = canSubmit ? 'Elige una carta que encaje con «' + (pub.clue ? pub.clue.word : '') + '».' : 'Esperando las cartas de la mesa…';
     } else if (pub.phase === 'vote') {
@@ -485,9 +565,15 @@
   function renderActions(pub, priv, me, ctx, canClue, canSubmit, canVote, canTrade) {
     var html = '';
     if (pub.phase === 'clue' && canClue) {
-      var ready = ctx.sel.card && ctx.sel.word;
+      var clueWord = CF.validClue(ctx.sel.custom) || ctx.sel.word;
+      var ready = !!ctx.sel.card && !!clueWord;
+      var note = 'carta + palabra';
+      if (ready) note = '«' + esc(clueWord) + '»';
+      else if (ctx.sel.custom) note = 'pista de 2 a 24 letras';
+      else if (ctx.sel.card) note = 'elige o escribe una palabra';
+      else if (ctx.sel.word) note = 'elige una carta';
       html = '<button class="btn btn-primary" data-act="narrate"' + (ready ? '' : ' disabled') + '>Dar la pista</button>' +
-        '<span class="action-note">' + (ready ? '«' + esc(ctx.sel.word) + '»' : 'carta + palabra') + '</span>';
+        '<span class="action-note">' + note + '</span>';
     } else if (pub.phase === 'submit' && canSubmit) {
       html = '<button class="btn btn-primary" data-act="submit"' + (ctx.sel.card ? '' : ' disabled') + '>Enviar carta</button>' +
         '<span class="action-note">' + (ctx.sel.card ? 'carta elegida' : 'elige una carta') + '</span>';
@@ -629,12 +715,17 @@
       var pm = currentPlayers[mates[m]];
       if (pm && pm.seat < p.seat) idx++;
     }
-    var dx = 0, dy = 0;
+    var dx = 0;
+    var dy = 0;
     if (total > 1) {
-      dx = (idx - (total - 1) / 2) * 14;
-      dy = -Math.abs(idx - (total - 1) / 2) * 4;
+      var mid = (total - 1) / 2;
+      var gap = total > 4 ? 14 : 26;
+      dx = (idx - mid) * gap;
+      dy = (idx - mid) * gap * 0.7;
     }
-    if (cell === 0) dy -= 15;
+    if (cell === 0 || cell === CF.CELLS) dy += 22;
+    node.classList.toggle('grouped', total > 1);
+    node.classList.toggle('crowded', total > 4);
     node.style.left = pos.x + '%';
     node.style.top = pos.y + '%';
     node.style.transform = 'translate(-50%,-50%) translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
@@ -650,18 +741,21 @@
   var currentPlayers = {};
 
   function renderTokens(pub) {
-    var visible = pub.phase === 'score' || pub.phase === 'trade';
+    var alive = {};
+    (pub.players || []).forEach(function (p) { alive[p.id] = true; });
+    Object.keys(tokens).forEach(function (pid) {
+      if (alive[pid]) return;
+      tokens[pid].remove();
+      delete tokens[pid];
+      delete tokenCells[pid];
+      delete currentPlayers[pid];
+    });
     (pub.players || []).forEach(function (p) {
       currentPlayers[p.id] = p;
       var node = ensureToken(p);
-      node.style.opacity = visible ? '1' : '0';
+      node.style.opacity = '1';
       node.classList.toggle('off', !p.connected);
     });
-    if (!visible) {
-      Object.keys(walkTimers).forEach(function (k) { clearInterval(walkTimers[k]); delete walkTimers[k]; });
-      Object.keys(tokenCells).forEach(function (k) { tokenCells[k] = -1; });
-      return;
-    }
     if (pub.phase === 'score' && lastScoreRound !== pub.round) {
       lastScoreRound = pub.round;
       (pub.players || []).forEach(function (p, i) {
@@ -687,6 +781,9 @@
         positionToken(p);
       });
     } else {
+      (pub.players || []).forEach(function (p) {
+        if (tokenCells[p.id] == null || tokenCells[p.id] < 0) tokenCells[p.id] = p.cell;
+      });
       positionAll();
     }
   }
@@ -809,6 +906,8 @@
     $('reveal').innerHTML = '';
     $('hand').innerHTML = '';
     $('words').innerHTML = '';
+    if ($('in-clue')) $('in-clue').value = '';
+    if ($('custom-clue')) $('custom-clue').classList.add('hidden');
     $('seats').innerHTML = '';
     $('round-result').innerHTML = '';
     $('felt-log').textContent = '';

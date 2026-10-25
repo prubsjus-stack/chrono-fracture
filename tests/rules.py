@@ -191,6 +191,42 @@ JS = r"""
     };
   }
 
+  // 11. Pista escrita a mano: no gasta palabra de la mano
+  {
+    const s = setup();
+    const narr = s.narrator, p = R.get(s, narr);
+    const before = p.words.length;
+    const r = R.apply(s, narr, { type: 'narrate', cardId: p.hand[0], word: 'zafiro' });
+    out.customClue = { ok: r.ok, before: before, after: p.words.length, word: s.clue.word, phase: s.phase };
+  }
+
+  // 12. Pista inválida (dos palabras): se rechaza
+  {
+    const s = setup();
+    const narr = s.narrator, p = R.get(s, narr);
+    const r = R.apply(s, narr, { type: 'narrate', cardId: p.hand[0], word: 'dos palabras' });
+    out.badClue = { ok: r.ok, phase: s.phase, clue: s.clue };
+  }
+
+  // 13. Palabra de la mano: sí se gasta
+  {
+    const s = setup();
+    const narr = s.narrator, p = R.get(s, narr);
+    const w = p.words[0];
+    R.apply(s, narr, { type: 'narrate', cardId: p.hand[0], word: w });
+    out.handClue = { used: w, left: p.words.indexOf(w), count: p.words.length, word: s.clue.word };
+  }
+
+  // 14. Mazo ampliado
+  {
+    out.deck = {
+      cards: CF.Deck.illus.length,
+      neutral: CF.Deck.neutral.length,
+      words: CF.Deck.words.length,
+      unique: new Set(CF.Deck.allIllustrationIds).size
+    };
+  }
+
   return out;
 }
 """
@@ -251,6 +287,24 @@ def main():
     eq(out['trade']['aHas'], True, 'A recibe la palabra')
     eq(out['trade']['bHas'], True, 'B recibe la palabra')
     eq(out['trade']['done'], 2, 'trueque cerrado en ambos')
+
+    eq(out['customClue']['ok'], True, 'pista escrita aceptada')
+    eq(out['customClue']['after'], out['customClue']['before'], 'la pista escrita no gasta palabra')
+    eq(out['customClue']['word'], 'zafiro', 'se guarda la pista escrita')
+    eq(out['customClue']['phase'], 'submit', 'la pista escrita abre el envío')
+
+    eq(out['badClue']['ok'], False, 'pista con espacios rechazada')
+    eq(out['badClue']['phase'], 'clue', 'sigue en la fase de pista')
+    eq(out['badClue']['clue'], None, 'no se guarda una pista inválida')
+
+    eq(out['handClue']['left'], -1, 'la palabra elegida se gasta')
+    eq(out['handClue']['count'], 4, 'quedan 4 palabras en la mano')
+    eq(out['handClue']['word'], out['handClue']['used'], 'se guarda la palabra de la mano')
+
+    eq(out['deck']['cards'], 208, 'ilustraciones del mazo')
+    eq(out['deck']['unique'], 208, 'identificadores únicos')
+    eq(out['deck']['neutral'], 18, 'cartas fantasma')
+    eq(out['deck']['words'], 48, 'palabras de pista')
 
     if errors:
         fails.append('errores JS: %r' % errors)

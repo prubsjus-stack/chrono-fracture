@@ -642,9 +642,31 @@ img { display: block; }
 }
 
 /* sendero */
-.rail { position: absolute; inset: 0; }
+.rail { position: absolute; inset: 0; pointer-events: none; }
+.rail::before {
+  content: '';
+  position: absolute;
+  left: 12.7%;
+  top: 13.2%;
+  width: 79.6%;
+  height: 75.6%;
+  border-radius: 50%;
+  border: 1px dashed rgba(201, 161, 91, 0.24);
+  box-shadow: inset 0 0 46px rgba(201, 161, 91, 0.035);
+}
+.rail-arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 7px solid rgba(201, 161, 91, 0.62);
+  border-top: 4.5px solid transparent;
+  border-bottom: 4.5px solid transparent;
+  opacity: 0.9;
+  filter: drop-shadow(0 0 4px rgba(201, 161, 91, 0.35));
+}
 .cell {
   position: absolute;
+  z-index: 3;
   transform: translate(-50%, -50%);
   width: clamp(20px, 2.25vw, 30px);
   height: clamp(20px, 2.25vw, 30px);
@@ -656,13 +678,41 @@ img { display: block; }
   border: 1px solid rgba(201, 161, 91, 0.32);
   box-shadow: inset 0 1px 0 rgba(255, 236, 200, 0.09), 0 3px 8px rgba(0, 0, 0, 0.45);
   font-family: var(--font-pixel);
-  font-size: clamp(6px, 0.62vw, 8px);
-  color: rgba(225, 210, 184, 0.72);
+  font-size: clamp(8px, 0.72vw, 10px);
+  font-weight: 700;
+  color: rgba(225, 210, 184, 0.86);
+  transition: border-color 0.3s, box-shadow 0.3s, color 0.3s;
 }
 .cell.milestone {
-  border-color: rgba(201, 161, 91, 0.55);
+  width: clamp(23px, 2.5vw, 33px);
+  height: clamp(23px, 2.5vw, 33px);
+  border-color: rgba(201, 161, 91, 0.62);
   color: var(--brass-bright);
-  background: linear-gradient(160deg, rgba(58, 38, 22, 0.95), rgba(18, 12, 8, 0.96));
+  background: linear-gradient(160deg, rgba(64, 42, 24, 0.96), rgba(20, 13, 8, 0.97));
+  box-shadow: inset 0 1px 0 rgba(255, 236, 200, 0.14), 0 0 12px rgba(201, 161, 91, 0.14), 0 3px 8px rgba(0, 0, 0, 0.5);
+}
+.cell.occupied {
+  border-color: rgba(126, 231, 255, 0.58);
+  color: var(--paper);
+  box-shadow: inset 0 0 10px rgba(126, 231, 255, 0.16), 0 0 12px rgba(126, 231, 255, 0.16), 0 3px 8px rgba(0, 0, 0, 0.5);
+}
+.cell.lead {
+  border-color: rgba(240, 211, 154, 0.92);
+  color: #2a1a08;
+  background: radial-gradient(circle at 35% 30%, #ffe5b0, #c9a15b 62%, #966f34);
+  box-shadow: 0 0 18px rgba(240, 211, 154, 0.45), 0 3px 8px rgba(0, 0, 0, 0.5);
+}
+.cell.lead::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: inherit;
+  border: 1px solid rgba(240, 211, 154, 0.5);
+  animation: leadPulse 2.4s ease-in-out infinite;
+}
+@keyframes leadPulse {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.06); }
 }
 .cell.start {
   width: clamp(34px, 3.6vw, 46px);
@@ -680,8 +730,41 @@ img { display: block; }
   border-color: rgba(240, 211, 154, 0.8);
   color: #221507;
   background: radial-gradient(circle at 35% 30%, #ffe5b0, #c9a15b 60%, #8f682f);
-  font-size: clamp(8px, 0.8vw, 11px);
+  font-size: clamp(7px, 0.7vw, 9.5px);
+  letter-spacing: 0.02em;
   box-shadow: 0 0 26px rgba(240, 211, 154, 0.4);
+}
+.cell.start.lead, .cell.finish.lead { color: #221507; }
+
+.board-key {
+  position: absolute;
+  left: 6px;
+  bottom: 2px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+  font-family: var(--font-pixel);
+  font-size: 6.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(203, 188, 164, 0.62);
+}
+.board-key span { display: flex; align-items: center; gap: 5px; }
+.key-step {
+  width: 6px;
+  height: 6px;
+  border: 1px solid rgba(201, 161, 91, 0.7);
+  transform: rotate(45deg);
+  box-shadow: 0 0 5px rgba(201, 161, 91, 0.25);
+}
+.key-meta {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe5b0, #c9a15b 65%, #8f682f);
+  box-shadow: 0 0 6px rgba(240, 211, 154, 0.4);
 }
 
 /* fichas */
@@ -707,17 +790,22 @@ img { display: block; }
 }
 .token-name {
   font-family: var(--font-pixel);
-  font-size: 5.5px;
-  letter-spacing: 0.04em;
+  font-size: 6.2px;
+  letter-spacing: 0.03em;
   color: var(--paper);
-  background: rgba(5, 7, 8, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(5, 7, 8, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 2px solid var(--seat);
   padding: 1px 3px;
   border-radius: 3px;
   white-space: nowrap;
   margin-top: -2px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
 }
+.token.crowded { width: 40px; height: 50px; }
+.token.crowded img { height: 34px; }
+.token.grouped .token-name { display: none; }
+.token.crowded .token-name { font-size: 5px; padding: 0 2px; }
 .token.off { opacity: 0.35 !important; }
 .token.jump img { animation: tokenJump 0.55s cubic-bezier(0.22, 0.9, 0.3, 1.2); }
 .token-shadow { display: none; }
@@ -857,6 +945,43 @@ img { display: block; }
 .clue.waiting strong { color: rgba(203, 188, 164, 0.4); text-shadow: none; letter-spacing: 0.3em; }
 .clue.picking strong { color: rgba(203, 188, 164, 0.3); }
 .clue.mine strong { color: var(--cyan); text-shadow: 0 0 24px rgba(126, 231, 255, 0.45); }
+.custom-clue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 1px;
+}
+.custom-clue label {
+  font-family: var(--font-pixel);
+  font-size: 5.5px;
+  letter-spacing: 0.14em;
+  color: var(--brass);
+  white-space: nowrap;
+}
+.custom-clue input {
+  width: clamp(132px, 18vw, 210px);
+  padding: 3px 9px 2px;
+  border-radius: 4px;
+  border: 1px solid rgba(201, 161, 91, 0.45);
+  background: rgba(5, 9, 10, 0.74);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  text-align: center;
+  box-shadow: inset 0 2px 7px rgba(0, 0, 0, 0.5);
+}
+.custom-clue input::placeholder {
+  color: rgba(203, 188, 164, 0.38);
+  font-style: italic;
+  letter-spacing: 0;
+}
+.custom-clue input:focus {
+  outline: none;
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 2px rgba(126, 231, 255, 0.14), inset 0 2px 7px rgba(0, 0, 0, 0.5);
+}
 .phase-hint {
   font-size: 10px;
   letter-spacing: 0.03em;
@@ -1554,8 +1679,14 @@ img { display: block; }
   .phase-hint { font-size: 9px; }
   .slot { width: clamp(48px, 9vw, 74px); }
   .slot-tag { font-size: 4.8px; }
-  .cell { width: clamp(15px, 3vw, 22px); height: clamp(15px, 3vw, 22px); font-size: 6px; }
-  .cell.start, .cell.finish { width: clamp(26px, 4.4vw, 36px); height: clamp(26px, 4.4vw, 36px); }
+  .cell { width: clamp(15px, 3vw, 22px); height: clamp(15px, 3vw, 22px); font-size: 7px; }
+  .cell.milestone { width: clamp(18px, 3.3vw, 25px); height: clamp(18px, 3.3vw, 25px); font-size: 7.5px; }
+  .cell.start, .cell.finish { width: clamp(26px, 4.4vw, 36px); height: clamp(26px, 4.4vw, 36px); font-size: 5.2px; }
+  .cell.finish { font-size: 6.5px; }
+  .rail-arrow { border-left-width: 5.5px; border-top-width: 3.5px; border-bottom-width: 3.5px; }
+  .board-key { font-size: 5.2px; left: 3px; bottom: 0; gap: 3px; }
+  .custom-clue label { display: none; }
+  .custom-clue input { width: clamp(120px, 26vw, 180px); font-size: 12px; }
   .hud-left { width: 58px; top: 46%; }
   .hud-round strong { font-size: 20px; }
   .hud-phase { font-size: 5px; }
@@ -1632,11 +1763,20 @@ img { display: block; }
   .result-chip span { font-size: 11px; }
   .result-chip i { display: none; }
   .felt-log { font-size: 7.5px; }
-  .cell { width: 15px; height: 15px; border-radius: 4px; font-size: 5.8px; border-width: 1px; }
-  .cell.start, .cell.finish { width: 24px; height: 24px; font-size: 5.4px; }
+  .cell { width: 15px; height: 15px; border-radius: 4px; font-size: 6.8px; border-width: 1px; }
+  .cell.milestone { width: 18px; height: 18px; font-size: 7.2px; }
+  .cell.start, .cell.finish { width: 24px; height: 24px; font-size: 4.8px; }
+  .cell.finish { font-size: 5.8px; }
   .token { width: 34px; height: 44px; }
   .token img { height: 34px; }
-  .token-name { font-size: 4px; padding: 0 2px; }
+  .token-name { font-size: 5px; padding: 0 2px; }
+  .token.crowded { width: 32px; height: 40px; }
+  .token.crowded img { height: 28px; }
+  .token.crowded .token-name { font-size: 4.4px; }
+  .board-key { font-size: 5.4px; left: 1px; bottom: -2px; gap: 2px; letter-spacing: 0.03em; }
+  .key-step { width: 5px; height: 5px; }
+  .key-meta { width: 6px; height: 6px; }
+  .custom-clue input { width: 118px; font-size: 11px; padding: 2px 5px 1px; }
 
   .handbar { height: clamp(138px, 23vh, 168px); }
   .hand-card { width: clamp(56px, 14.5vw, 74px); margin-left: clamp(-24px, -5vw, -16px); }

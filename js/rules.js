@@ -289,16 +289,21 @@
     if (!p) return { ok: false, error: 'Jugador desconocido.' };
     var i = p.hand.indexOf(cardId);
     if (i < 0) return { ok: false, error: 'Esa carta no está en tu mano.' };
+    var custom = CF.validClue(word);
     var j = p.words.indexOf(word);
-    if (j < 0) return { ok: false, error: 'Esa palabra no está en tu mano.' };
+    if (j < 0 && !custom) return { ok: false, error: 'La pista debe ser una sola palabra de 2 a 24 letras.' };
+    if (j >= 0) {
+      p.words.splice(j, 1);
+      p.usedWords++;
+      s.decks.wordDiscard.push(word);
+    } else {
+      word = custom;
+    }
     p.hand.splice(i, 1);
-    p.words.splice(j, 1);
-    p.usedWords++;
     s.decks.discard.push(cardId);
     s.clue = { word: word, pid: pid };
     s.clueCardId = cardId;
     s.table = [{ id: cardId, owner: pid, ghost: false }];
-    s.decks.wordDiscard.push(word);
     s.phase = PH.SUBMIT;
     s.deadline = nowMs() + timers().submit * 1000;
     log(s, p.name + ' da la pista: «' + word + '».');

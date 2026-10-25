@@ -86,7 +86,15 @@
     },
     pickWord: function (w) {
       if (!canPickWord()) return;
+      A.sel.custom = '';
       A.sel.word = A.sel.word === w ? null : w;
+      refreshUI();
+    },
+    clueWord: function (value) {
+      if (!canPickWord()) return;
+      var clean = String(value || '').replace(/[^A-Za-zÀ-ÖØ-öø-ÿĀ-ž\u0300-\u036f]/g, '').slice(0, 24);
+      A.sel.custom = clean;
+      if (clean) A.sel.word = null;
       refreshUI();
     },
     vote: function (cardId) {
@@ -94,10 +102,12 @@
     },
     action: function (type) {
       if (type === 'narrate') {
-        if (!A.sel.card || !A.sel.word) return;
-        doAction({ type: 'narrate', cardId: A.sel.card, word: A.sel.word });
+        var clue = CF.validClue(A.sel.custom) || A.sel.word;
+        if (!A.sel.card || !clue) return;
+        doAction({ type: 'narrate', cardId: A.sel.card, word: clue });
         A.sel.card = null;
         A.sel.word = null;
+        A.sel.custom = '';
       } else if (type === 'submit') {
         if (!A.sel.card) return;
         var id = A.sel.card;
@@ -284,6 +294,13 @@
         if (A.joinTimer) { clearTimeout(A.joinTimer); A.joinTimer = null; }
         UI.setJoinBusy(false);
         UI.homeMsg('');
+        if (pub.phase === 'lobby' && !(pub.players || []).some(function (p) { return p.id === A.me.id; })) {
+          var now = Date.now();
+          if (!A.lastHelloAt || now - A.lastHelloAt > 2200) {
+            A.lastHelloAt = now;
+            CF.Net.sendHello(A.me);
+          }
+        }
         prepareSelection();
         refreshUI();
       },
@@ -322,7 +339,16 @@
         if (msg.pid === A.me.id) return;
         A.seen[msg.pid] = Date.now();
         var p = R.get(A.state, msg.pid);
-        if (p && !p.connected) {
+        if (!p) {
+          if (!msg.name || A.state.phase !== 'lobby') return;
+          var added = R.addPlayer(A.state, { id: msg.pid, name: msg.name, charId: msg.charId });
+          if (added.ok) {
+            UI.toast(added.player.name + ' se sienta en la mesa.', 'ok');
+            refreshHost(true);
+          }
+          return;
+        }
+        if (!p.connected) {
           R.setConnected(A.state, msg.pid, true);
           refreshHost(true);
         }
@@ -488,6 +514,7 @@
       (A.pub.phase === 'submit' && !isNarr && mine && !mine.submitted);
     if (A.sel.card && (!canCard || hand.indexOf(A.sel.card) < 0)) A.sel.card = null;
     if (A.sel.word && (!(A.pub.phase === 'clue' && isNarr) || words.indexOf(A.sel.word) < 0)) A.sel.word = null;
+    if (A.sel.custom && !(A.pub.phase === 'clue' && isNarr)) A.sel.custom = '';
     if (A.sel.offerWord && words.indexOf(A.sel.offerWord) < 0) A.sel.offerWord = null;
     if (A.sel.take && words.indexOf(A.sel.take) < 0) A.sel.take = null;
     if (A.sel.target) {

@@ -12,6 +12,6 @@
 
 - **Stack:** se reutiliza la infraestructura del proyecto (cliente web estático + MQTT/HiveMQ). El anfitrión de la sala mantiene el estado autoritativo y lo sincroniza; no hay que instalar nada en el PC del profesor y funciona en GitHub Pages.
 - **8 personajes:** solo existen 3 personajes canónicos. Se conservan intactos y se añaden 5 **Ecos** (mismo sprite pixel-art, color y llamada propios) para poder sentar hasta 8 jugadores sin duplicar fichas.
-- **Cartas:** 80 ilustraciones SVG originales generadas por código (20 motivos × 4 paletas), sin arte de Dixit ni bancos de imágenes. Mazo neutral aparte (12 cartas) para las cartas fantasma.
+- **Cartas:** 208 ilustraciones SVG originales generadas por código (26 motivos × 8 paletas), sin arte de Dixit ni bancos de imágenes. 48 palabras de pista y un mazo neutral aparte de 18 cartas para las cartas fantasma. El Narrador puede usar una palabra de su mano o escribir la suya (2–24 letras, sin espacios).
 - **Trueque:** oferta de una palabra a otro jugador, que acepta o rechaza; un trueque por jugador y ronda, con botón «listo» para cerrar antes de los 20 s.
 - **Desempates:** gana quien esté más adelante; a igual casilla, quien tenga más puntos totales; si persiste, victoria compartida.

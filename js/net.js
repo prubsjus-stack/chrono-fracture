@@ -58,7 +58,10 @@
         client.subscribe(t, { qos: 1 }, function () {});
       });
       if (N.room) {
-        publish(topic('pres'), { pid: N.me && N.me.id, ts: Date.now(), name: N.me && N.me.name }, false);
+        publish(topic('pres'), {
+          pid: N.me && N.me.id, ts: Date.now(), name: N.me && N.me.name,
+          charId: N.me && N.me.charId, v: CF.VERSION
+        }, false);
       }
       startPresence();
       emit('connect');
@@ -123,7 +126,9 @@
     if (!N.room || !N.me) return;
     N.presTimer = setInterval(function () {
       if (N.status !== 'online') return;
-      publish(topic('pres'), { pid: N.me.id, ts: Date.now(), name: N.me.name }, false);
+      publish(topic('pres'), {
+        pid: N.me.id, ts: Date.now(), name: N.me.name, charId: N.me.charId, v: CF.VERSION
+      }, false);
     }, CF.broker.presenceEvery);
   }
 
@@ -142,7 +147,7 @@
     if (host) subscribeHost();
 
     if (N.status === 'online') {
-      publish(topic('pres'), { pid: me.id, ts: Date.now(), name: me.name }, false);
+      publish(topic('pres'), { pid: me.id, ts: Date.now(), name: me.name, charId: me.charId, v: CF.VERSION }, false);
     }
     startPresence();
   }

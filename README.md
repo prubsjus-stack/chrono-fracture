@@ -25,6 +25,16 @@ No abras `index.html` con doble clic: el juego necesita `http://`, no `file://`.
 
 Versión publicada: <https://prubsjus-stack.github.io/chrono-fracture/>
 
+## Novedades de la 2.1
+
+- **Tablero más legible.** Sendero punteado, flechas de dirección, SALIDA y META
+  rotuladas, hitos cada 5 casillas, casilla ocupada y líder resaltados, fichas
+  visibles en todas las fases y leyenda «1 punto = 1 casilla».
+- **Pistas personalizadas.** Además de una palabra de tu mano, el Narrador puede
+  escribir la suya (2–24 letras, sin espacios). Escribirla no gasta palabra.
+- **Mazo más variado.** 208 ilustraciones (26 motivos × 8 paletas), 18 cartas
+  fantasma y 48 palabras de pista.
+
 ---
 
 ## Cómo se juega
@@ -33,7 +43,8 @@ Versión publicada: <https://prubsjus-stack.github.io/chrono-fracture/>
    resto entra con ese código. Mínimo 3, máximo 8. Cada jugador elige personaje.
 2. **Reparto.** Cada jugador recibe **6 cartas ilustradas** y **5 palabras**.
 3. **Pista.** En cada ronda hay un **Narrador** distinto. Elige una de sus cartas
-   y da la pista con **una sola palabra de su mano**.
+   y da la pista con **una sola palabra**: una de su mano o **escrita a mano**
+   (2–24 letras, sin espacios).
 4. **Cartas secretas.** El resto elige en secreto una carta de su mano que encaje
    con la palabra. Las cartas se barajan con las **cartas fantasma** del mazo
    neutral hasta que hay **5 sobre la mesa**.
@@ -76,7 +87,7 @@ el asiento más bajo recupera el estado y continúa la partida.
 index.html            Estructura de las pantallas
 css/style.css         Mesa de madera y paño, cartas, sendero y responsive
 js/config.js          Personajes, tiempos, mazo MQTT y utilidades
-js/deck.js            80 ilustraciones SVG originales + 12 fantasmas + 40 palabras
+js/deck.js            208 ilustraciones SVG originales + 18 fantasmas + 48 palabras
 js/rules.js           Motor autoritativo: rondas, votos, puntos, trueque, victoria
 js/net.js             Salas MQTT, estado público/privado, presencia y relevo
 js/sfx.js             Sonidos sintetizados (paso, volteo, gema, victoria)
@@ -103,8 +114,8 @@ vendor/               Cliente MQTT
 - **Privacidad.** Durante pista, envío y votación el autor de cada carta no se
   publica; solo se revela al puntuar. Los votos tampoco se publican hasta el
   recuento.
-- **Sin arte ajeno.** Las 80 ilustraciones y las 12 cartas fantasma se generan
-  como SVG dentro de `js/deck.js`, a partir de motivos y paletas propias.
+- **Sin arte ajeno.** Las 208 ilustraciones (26 motivos × 8 paletas) y las 18
+  cartas fantasma se generan como SVG dentro de `js/deck.js`.
 
 ---
 

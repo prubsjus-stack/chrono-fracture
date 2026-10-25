@@ -13,7 +13,7 @@ import threading
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT = 8125
-URL = 'http://127.0.0.1:%d/?v=2.0.1' % PORT
+URL = 'http://127.0.0.1:%d/?v=2.1.0' % PORT
 
 
 class Quiet(http.server.SimpleHTTPRequestHandler):
@@ -76,6 +76,13 @@ def main():
             timeout=30000)
         host.click('#btn-start')
 
+        host.wait_for_selector('#screen-table:not(.hidden)', timeout=20000)
+        assert host.locator('#rail .cell').count() == 31, 'sendero de 31 marcas'
+        assert host.locator('#rail .rail-arrow').count() == 6, 'flechas del sendero'
+        assert host.locator('#rail .cell.milestone').count() == 6, 'hitos cada 5 casillas'
+        assert host.locator('#rail .cell.finish').inner_text().strip() == 'META', 'meta rotulada'
+        assert '1 PUNTO = 1 CASILLA' in host.inner_text('.board-key').upper(), 'leyenda del tablero'
+
         for rnd in range(1, 6):
             for pg in pages:
                 wait_phase(pg, 'clue')
@@ -87,12 +94,22 @@ def main():
             narrator.wait_for_selector('#hand .hand-card')
             assert narrator.locator('#hand .hand-card').count() == 6, 'mano de 6 cartas'
             assert narrator.locator('#words .word-ticket').count() == 5, 'mano de 5 palabras'
-            narrator.click('#hand .hand-card')
-            narrator.click('#words .word-ticket')
-            narrator.click('[data-act="narrate"]')
+            if rnd == 1:
+                narrator.wait_for_selector('#custom-clue:not(.hidden)')
+                narrator.fill('#in-clue', 'zafiro')
+                narrator.click('#hand .hand-card')
+                assert narrator.inner_text('#clue-word').strip().lower() == 'zafiro', 'pista escrita visible'
+                narrator.click('[data-act="narrate"]')
+            else:
+                narrator.click('#hand .hand-card')
+                narrator.click('#words .word-ticket')
+                narrator.click('[data-act="narrate"]')
 
             for pg in pages:
                 wait_phase(pg, 'submit')
+            if rnd == 1:
+                assert pub(host)['clue']['word'] == 'zafiro', 'la pista escrita llega a la mesa'
+                assert narrator.evaluate('CF.app.snapshot().priv.words.length') == 5, 'la pista escrita no gasta palabra'
             for pg in pages:
                 if pg.evaluate('CF.app.me.id') == narr:
                     continue
